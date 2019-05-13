@@ -43,6 +43,7 @@ class Loss {
       int32_t targetIndex,
       Model::State& state,
       real lr,
+      real l2reg,
       bool backprop) = 0;
   virtual void computeOutput(Model::State& state) const = 0;
 
@@ -60,6 +61,7 @@ class BinaryLogisticLoss : public Loss {
       Model::State& state,
       bool labelIsPositive,
       real lr,
+      real l2reg,
       bool backprop) const;
 
  public:
@@ -77,6 +79,7 @@ class OneVsAllLoss : public BinaryLogisticLoss {
       int32_t targetIndex,
       Model::State& state,
       real lr,
+      real l2reg,
       bool backprop) override;
 };
 
@@ -101,6 +104,7 @@ class NegativeSamplingLoss : public BinaryLogisticLoss {
       int32_t targetIndex,
       Model::State& state,
       real lr,
+      real l2reg,
       bool backprop) override;
 };
 
@@ -138,6 +142,7 @@ class HierarchicalSoftmaxLoss : public BinaryLogisticLoss {
       int32_t targetIndex,
       Model::State& state,
       real lr,
+      real l2reg,
       bool backprop) override;
   void predict(
       int32_t k,
@@ -155,6 +160,7 @@ class SoftmaxLoss : public Loss {
       int32_t targetIndex,
       Model::State& state,
       real lr,
+      real l2reg,
       bool backprop) override;
   void computeOutput(Model::State& state) const override;
 };

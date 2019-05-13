@@ -34,7 +34,9 @@ class Matrix {
   int64_t size(int64_t dim) const;
 
   virtual real dotRow(const Vector&, int64_t, std::minstd_rand&, bool=true) const = 0;
+  virtual real dotRow(int64_t, int64_t) const = 0;
   virtual void addVectorToRow(const Vector&, int64_t, real) = 0;
+  virtual void addRowToRow(int64_t, int64_t, real) = 0;
   virtual void addRowToVector(Vector& x, int32_t i, std::minstd_rand&, bool=true) const = 0;
   virtual void addRowToVector(Vector& x, int32_t i, real a, std::minstd_rand&, bool=true) const = 0;
   virtual void save(std::ostream&) const = 0;

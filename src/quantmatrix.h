@@ -50,7 +50,9 @@ class QuantMatrix : public Matrix {
   void quantize(DenseMatrix&& mat);
 
   real dotRow(const Vector&, int64_t, std::minstd_rand&, bool=true) const override;
+  real dotRow(int64_t, int64_t) const override;
   void addVectorToRow(const Vector&, int64_t, real) override;
+  void addRowToRow(int64_t, int64_t, real) override;
   void addRowToVector(Vector& x, int32_t i, std::minstd_rand&, bool=true) const override;
   void addRowToVector(Vector& x, int32_t i, real a, std::minstd_rand&, bool=true) const override;
   void save(std::ostream&) const override;

@@ -80,17 +80,29 @@ real BinaryLogisticLoss::binaryLogistic(
     Model::State& state,
     bool labelIsPositive,
     real lr,
+    real l2reg,
     bool backprop) const {
   real score = utils::sigmoid(wo_->dotRow(state.hidden, target, state.rng));
+  real l2reg_score;
+  if (l2reg > 1e-5) {
+    l2reg_score = l2reg * wo_->dotRow(target, target);
+  } else {
+    l2reg_score = 0.0;
+  }
+
   if (backprop) {
     real alpha = lr * (real(labelIsPositive) - score);
     state.grad.addRow(*wo_, target, alpha, state.rng);
     wo_->addVectorToRow(state.hidden, target, alpha);
+    if (l2reg > 1e-5) {
+      wo_->addRowToRow(target, target, -2 * lr * l2reg);
+    }
   }
+
   if (labelIsPositive) {
-    return -log(score);
+    return -log(score) + l2reg_score;
   } else {
-    return -log(1.0 - score);
+    return -log(1.0 - score) + l2reg_score;
   }
 }
 
@@ -111,12 +123,13 @@ real OneVsAllLoss::forward(
     int32_t /* we take all targets here */,
     Model::State& state,
     real lr,
+    real l2reg,
     bool backprop) {
   real loss = 0.0;
   int32_t osz = state.output.size();
   for (int32_t i = 0; i < osz; i++) {
     bool isMatch = utils::contains(targets, i);
-    loss += binaryLogistic(i, state, isMatch, lr, backprop);
+    loss += binaryLogistic(i, state, isMatch, lr, l2reg, backprop);
   }
 
   return loss;
@@ -146,15 +159,16 @@ real NegativeSamplingLoss::forward(
     int32_t targetIndex,
     Model::State& state,
     real lr,
+    real l2reg,
     bool backprop) {
   assert(targetIndex >= 0);
   assert(targetIndex < targets.size());
   int32_t target = targets[targetIndex];
-  real loss = binaryLogistic(target, state, true, lr, backprop);
+  real loss = binaryLogistic(target, state, true, lr, l2reg, backprop);
 
   for (int32_t n = 0; n < neg_; n++) {
     auto negativeTarget = getNegative(target, state.rng);
-    loss += binaryLogistic(negativeTarget, state, false, lr, backprop);
+    loss += binaryLogistic(negativeTarget, state, false, lr, l2reg, backprop);
   }
   return loss;
 }
@@ -229,13 +243,14 @@ real HierarchicalSoftmaxLoss::forward(
     int32_t targetIndex,
     Model::State& state,
     real lr,
+    real l2reg,
     bool backprop) {
   real loss = 0.0;
   int32_t target = targets[targetIndex];
   const std::vector<bool>& binaryCode = codes_[target];
   const std::vector<int32_t>& pathToRoot = paths_[target];
   for (int32_t i = 0; i < pathToRoot.size(); i++) {
-    loss += binaryLogistic(pathToRoot[i], state, binaryCode[i], lr, backprop);
+    loss += binaryLogistic(pathToRoot[i], state, binaryCode[i], lr, l2reg, backprop);
   }
   return loss;
 }
@@ -305,12 +320,19 @@ real SoftmaxLoss::forward(
     int32_t targetIndex,
     Model::State& state,
     real lr,
+    real l2reg,
     bool backprop) {
   computeOutput(state);
 
   assert(targetIndex >= 0);
   assert(targetIndex < targets.size());
   int32_t target = targets[targetIndex];
+  real l2reg_score;
+  if (l2reg > 1e-5) {
+    l2reg_score = l2reg * wo_->dotRow(target, target);
+  } else {
+    l2reg_score = 0.0;
+  }
 
   if (backprop) {
     int32_t osz = wo_->size(0);
@@ -319,9 +341,12 @@ real SoftmaxLoss::forward(
       real alpha = lr * (label - state.output[i]);
       state.grad.addRow(*wo_, i, alpha, state.rng);
       wo_->addVectorToRow(state.hidden, i, alpha);
+      if (l2reg > 1e-5) {
+        wo_->addRowToRow(target, target, -2 * lr * l2reg);
+      }
     }
   }
-  return -log(state.output[target]);
+  return -log(state.output[target]) + l2reg_score;
 };
 
 } // namespace fasttext

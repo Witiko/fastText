@@ -133,12 +133,37 @@ real DenseMatrix::dotRow(
   return d;
 }
 
+real DenseMatrix::dotRow(int64_t i, int64_t j) const {
+  assert(i >= 0);
+  assert(i < m_);
+  assert(j >= 0);
+  assert(j < m_);
+  real d = 0.0;
+  for (int64_t k = 0; k < n_; k++) {
+    d += at(i, k) * at(j, k);
+  }
+  if (std::isnan(d)) {
+    throw std::runtime_error("Encountered NaN.");
+  }
+  return d;
+}
+
 void DenseMatrix::addVectorToRow(const Vector& vec, int64_t i, real a) {
   assert(i >= 0);
   assert(i < m_);
   assert(vec.size() == n_);
   for (int64_t j = 0; j < n_; j++) {
-    data_[i * n_ + j] += a * vec[j];
+    at(i, j) += a * vec[j];
+  }
+}
+
+void DenseMatrix::addRowToRow(int64_t i, int64_t j, real a) {
+  assert(i >= 0);
+  assert(i < m_);
+  assert(j >= 0);
+  assert(j < m_);
+  for (int64_t k = 0; k < n_; k++) {
+    at(j, k) += at(i, k) * a;
   }
 }
 

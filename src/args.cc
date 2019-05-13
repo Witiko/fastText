@@ -16,6 +16,7 @@
 namespace fasttext {
 
 Args::Args() {
+  l2reg = 0;
   lr = 0.05;
   dim = 100;
   ws = 5;
@@ -118,6 +119,8 @@ void Args::parseArgs(const std::vector<std::string>& args) {
         input = std::string(args.at(ai + 1));
       } else if (args[ai] == "-output") {
         output = std::string(args.at(ai + 1));
+      } else if (args[ai] == "-l2reg") {
+        l2reg = std::stof(args.at(ai + 1));
       } else if (args[ai] == "-lr") {
         lr = std::stof(args.at(ai + 1));
       } else if (args[ai] == "-lrUpdateRate") {
@@ -251,6 +254,7 @@ void Args::printDictionaryHelp() {
 void Args::printTrainingHelp() {
   std::cerr
       << "\nThe following arguments for training are optional:\n"
+      << "  -l2reg              l2 regularization coefficient [" << l2reg << "]\n"
       << "  -lr                 learning rate [" << lr << "]\n"
       << "  -lrUpdateRate       change the rate of updates for the learning rate ["
       << lrUpdateRate << "]\n"
@@ -298,6 +302,7 @@ void Args::save(std::ostream& out) {
   out.write((char*)&(maxn), sizeof(int));
   out.write((char*)&(lrUpdateRate), sizeof(int));
   out.write((char*)&(t), sizeof(double));
+  out.write((char*)&(l2reg), sizeof(double));
 }
 
 void Args::load(std::istream& in) {
@@ -315,6 +320,7 @@ void Args::load(std::istream& in) {
   in.read((char*)&(maxn), sizeof(int));
   in.read((char*)&(lrUpdateRate), sizeof(int));
   in.read((char*)&(t), sizeof(double));
+  in.read((char*)&(l2reg), sizeof(double));
 }
 
 void Args::dump(std::ostream& out) const {
@@ -346,6 +352,8 @@ void Args::dump(std::ostream& out) const {
       << " " << lrUpdateRate << std::endl;
   out << "t"
       << " " << t << std::endl;
+  out << "l2reg"
+      << " " << l2reg << std::endl;
 }
 
 } // namespace fasttext

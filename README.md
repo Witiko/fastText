@@ -253,6 +253,7 @@ The following arguments for the dictionary are optional:
   -label              labels prefix [__label__]
 
 The following arguments for training are optional:
+  -l2reg              l2 regularization coefficient [0]
   -lr                 learning rate [0.1]
   -lrUpdateRate       change the rate of updates for the learning rate [100]
   -dim                size of word vectors [100]
