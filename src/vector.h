@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <ostream>
+#include <random>
 #include <vector>
 
 #include "real.h"
@@ -50,9 +51,9 @@ class Vector {
   real norm() const;
   void addVector(const Vector& source);
   void addVector(const Vector&, real);
-  void addRow(const Matrix&, int64_t);
-  void addRow(const Matrix&, int64_t, real);
-  void mul(const Matrix&, const Vector&);
+  void addRow(const Matrix&, int64_t, std::minstd_rand&, bool=true);
+  void addRow(const Matrix&, int64_t, real, std::minstd_rand&, bool=true);
+  void mul(const Matrix&, const Vector&, std::minstd_rand&);
   int64_t argmax();
 };
 

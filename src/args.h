@@ -17,12 +17,14 @@ namespace fasttext {
 
 enum class model_name : int { cbow = 1, sg, sup };
 enum class loss_name : int { hs = 1, ns, softmax, ova };
+enum class binarization_name : int { none = 1, sbc, dbc };
 
 class Args {
  protected:
   std::string lossToString(loss_name) const;
   std::string boolToString(bool) const;
   std::string modelToString(model_name) const;
+  std::string binarizationToString(binarization_name) const;
 
  public:
   Args();
@@ -39,6 +41,7 @@ class Args {
   int wordNgrams;
   loss_name loss;
   model_name model;
+  binarization_name binarization;
   int bucket;
   int minn;
   int maxn;

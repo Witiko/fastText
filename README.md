@@ -260,6 +260,7 @@ The following arguments for training are optional:
   -epoch              number of epochs [5]
   -neg                number of negatives sampled [5]
   -loss               loss function {ns, hs, softmax} [softmax]
+  -binarization       binarization {none, sbc, dbc} [none]
   -thread             number of threads [12]
   -pretrainedVectors  pretrained word vectors for supervised learning []
   -saveOutput         whether output params should be saved [0]

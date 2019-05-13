@@ -11,9 +11,11 @@
 #include <cstdint>
 #include <istream>
 #include <ostream>
+#include <random>
 #include <vector>
 
 #include <assert.h>
+#include "args.h"
 #include "matrix.h"
 #include "real.h"
 
@@ -24,10 +26,11 @@ class Vector;
 class DenseMatrix : public Matrix {
  protected:
   std::vector<real> data_;
+  binarization_name bn_;
 
  public:
-  DenseMatrix();
-  explicit DenseMatrix(int64_t, int64_t);
+  DenseMatrix(binarization_name);
+  explicit DenseMatrix(int64_t, int64_t, binarization_name);
   DenseMatrix(const DenseMatrix&) = default;
   DenseMatrix(DenseMatrix&&) noexcept;
   DenseMatrix& operator=(const DenseMatrix&) = delete;
@@ -64,10 +67,10 @@ class DenseMatrix : public Matrix {
   real l2NormRow(int64_t i) const;
   void l2NormRow(Vector& norms) const;
 
-  real dotRow(const Vector&, int64_t) const override;
+  real dotRow(const Vector&, int64_t, std::minstd_rand&, bool=true) const override;
   void addVectorToRow(const Vector&, int64_t, real) override;
-  void addRowToVector(Vector& x, int32_t i) const override;
-  void addRowToVector(Vector& x, int32_t i, real a) const override;
+  void addRowToVector(Vector& x, int32_t i, std::minstd_rand&, bool=true) const override;
+  void addRowToVector(Vector& x, int32_t i, real a, std::minstd_rand&, bool=true) const override;
   void save(std::ostream&) const override;
   void load(std::istream&) override;
   void dump(std::ostream&) const override;

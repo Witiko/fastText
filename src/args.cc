@@ -26,6 +26,7 @@ Args::Args() {
   wordNgrams = 1;
   loss = loss_name::ns;
   model = model_name::sg;
+  binarization = binarization_name::none;
   bucket = 2000000;
   minn = 3;
   maxn = 6;
@@ -74,6 +75,18 @@ std::string Args::modelToString(model_name mn) const {
       return "sg";
     case model_name::sup:
       return "sup";
+  }
+  return "Unknown model name!"; // should never happen
+}
+
+std::string Args::binarizationToString(binarization_name bn) const {
+  switch (bn) {
+    case binarization_name::none:
+      return "none";
+    case binarization_name::sbc:
+      return "sbc";
+    case binarization_name::dbc:
+      return "dbc";
   }
   return "Unknown model name!"; // should never happen
 }
@@ -135,6 +148,18 @@ void Args::parseArgs(const std::vector<std::string>& args) {
           loss = loss_name::ova;
         } else {
           std::cerr << "Unknown loss: " << args.at(ai + 1) << std::endl;
+          printHelp();
+          exit(EXIT_FAILURE);
+        }
+      } else if (args[ai] == "-binarization") {
+        if (args.at(ai + 1) == "none") {
+          binarization = binarization_name::none;
+        } else if (args.at(ai + 1) == "dbc") {
+          binarization = binarization_name::dbc;
+        } else if (args.at(ai + 1) == "sbc") {
+          binarization = binarization_name::sbc;
+        } else {
+          std::cerr << "Unknown binarization: " << args.at(ai + 1) << std::endl;
           printHelp();
           exit(EXIT_FAILURE);
         }
@@ -235,6 +260,8 @@ void Args::printTrainingHelp() {
       << "  -neg                number of negatives sampled [" << neg << "]\n"
       << "  -loss               loss function {ns, hs, softmax, one-vs-all} ["
       << lossToString(loss) << "]\n"
+      << "  -binarization       binarization {none, sbc, dbc} ["
+      << binarizationToString(binarization) << "]\n"
       << "  -thread             number of threads [" << thread << "]\n"
       << "  -pretrainedVectors  pretrained word vectors for supervised learning ["
       << pretrainedVectors << "]\n"
@@ -265,6 +292,7 @@ void Args::save(std::ostream& out) {
   out.write((char*)&(wordNgrams), sizeof(int));
   out.write((char*)&(loss), sizeof(loss_name));
   out.write((char*)&(model), sizeof(model_name));
+  out.write((char*)&(binarization), sizeof(binarization_name));
   out.write((char*)&(bucket), sizeof(int));
   out.write((char*)&(minn), sizeof(int));
   out.write((char*)&(maxn), sizeof(int));
@@ -281,6 +309,7 @@ void Args::load(std::istream& in) {
   in.read((char*)&(wordNgrams), sizeof(int));
   in.read((char*)&(loss), sizeof(loss_name));
   in.read((char*)&(model), sizeof(model_name));
+  in.read((char*)&(binarization), sizeof(binarization_name));
   in.read((char*)&(bucket), sizeof(int));
   in.read((char*)&(minn), sizeof(int));
   in.read((char*)&(maxn), sizeof(int));
@@ -305,6 +334,8 @@ void Args::dump(std::ostream& out) const {
       << " " << lossToString(loss) << std::endl;
   out << "model"
       << " " << modelToString(model) << std::endl;
+  out << "binarization"
+      << " " << binarizationToString(binarization) << std::endl;
   out << "bucket"
       << " " << bucket << std::endl;
   out << "minn"

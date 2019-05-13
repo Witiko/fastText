@@ -49,8 +49,8 @@ std::shared_ptr<Loss> FastText::createLoss(std::shared_ptr<Matrix>& output) {
 
 FastText::FastText() : quant_(false), wordVectors_(nullptr) {}
 
-void FastText::addInputVector(Vector& vec, int32_t ind) const {
-  vec.addRow(*input_, ind);
+void FastText::addInputVector(Vector& vec, int32_t ind, std::minstd_rand& rng, bool binarize) const {
+  vec.addRow(*input_, ind, rng, binarize && args_->binarization != binarization_name::sbc);
 }
 
 std::shared_ptr<const Dictionary> FastText::getDictionary() const {
@@ -86,29 +86,29 @@ int32_t FastText::getSubwordId(const std::string& subword) const {
   return dict_->nwords() + h;
 }
 
-void FastText::getWordVector(Vector& vec, const std::string& word) const {
+void FastText::getWordVector(Vector& vec, const std::string& word, std::minstd_rand& rng, bool binarize) const {
   const std::vector<int32_t>& ngrams = dict_->getSubwords(word);
   vec.zero();
   for (int i = 0; i < ngrams.size(); i++) {
-    addInputVector(vec, ngrams[i]);
+    addInputVector(vec, ngrams[i], rng, binarize);
   }
   if (ngrams.size() > 0) {
     vec.mul(1.0 / ngrams.size());
   }
 }
 
-void FastText::getVector(Vector& vec, const std::string& word) const {
-  getWordVector(vec, word);
+void FastText::getVector(Vector& vec, const std::string& word, std::minstd_rand& rng) const {
+  getWordVector(vec, word, rng);
 }
 
-void FastText::getSubwordVector(Vector& vec, const std::string& subword) const {
+void FastText::getSubwordVector(Vector& vec, const std::string& subword, std::minstd_rand& rng, bool binarize) const {
   vec.zero();
   int32_t h = dict_->hash(subword) % args_->bucket;
   h = h + dict_->nwords();
-  addInputVector(vec, h);
+  addInputVector(vec, h, rng, binarize);
 }
 
-void FastText::saveVectors(const std::string& filename) {
+void FastText::saveVectors(const std::string& filename, std::minstd_rand& rng) {
   std::ofstream ofs(filename);
   if (!ofs.is_open()) {
     throw std::invalid_argument(
@@ -118,17 +118,17 @@ void FastText::saveVectors(const std::string& filename) {
   Vector vec(args_->dim);
   for (int32_t i = 0; i < dict_->nwords(); i++) {
     std::string word = dict_->getWord(i);
-    getWordVector(vec, word);
+    getWordVector(vec, word, rng);
     ofs << word << " " << vec << std::endl;
   }
   ofs.close();
 }
 
-void FastText::saveVectors() {
-  saveVectors(args_->output + ".vec");
+void FastText::saveVectors(std::minstd_rand& rng) {
+  saveVectors(args_->output + ".vec", rng);
 }
 
-void FastText::saveOutput(const std::string& filename) {
+void FastText::saveOutput(const std::string& filename, std::minstd_rand& rng) {
   std::ofstream ofs(filename);
   if (!ofs.is_open()) {
     throw std::invalid_argument(
@@ -146,14 +146,14 @@ void FastText::saveOutput(const std::string& filename) {
     std::string word = (args_->model == model_name::sup) ? dict_->getLabel(i)
                                                          : dict_->getWord(i);
     vec.zero();
-    vec.addRow(*output_, i);
+    vec.addRow(*output_, i, rng, args_->binarization != binarization_name::sbc);
     ofs << word << " " << vec << std::endl;
   }
   ofs.close();
 }
 
-void FastText::saveOutput() {
-  saveOutput(args_->output + ".output");
+void FastText::saveOutput(std::minstd_rand& rng) {
+  saveOutput(args_->output + ".output", rng);
 }
 
 bool FastText::checkModel(std::istream& in) {
@@ -226,8 +226,8 @@ std::vector<int64_t> FastText::getTargetCounts() const {
 
 void FastText::loadModel(std::istream& in) {
   args_ = std::make_shared<Args>();
-  input_ = std::make_shared<DenseMatrix>();
-  output_ = std::make_shared<DenseMatrix>();
+  input_ = std::make_shared<DenseMatrix>(args_->binarization);
+  output_ = std::make_shared<DenseMatrix>(args_->binarization);
   args_->load(in);
   if (version == 11 && args_->model == model_name::sup) {
     // backward compatibility: old supervised models do not use char ngrams.
@@ -323,7 +323,7 @@ void FastText::quantize(const Args& qargs) {
     auto idx = selectEmbeddings(qargs.cutoff);
     dict_->prune(idx);
     std::shared_ptr<DenseMatrix> ninput =
-        std::make_shared<DenseMatrix>(idx.size(), args_->dim);
+        std::make_shared<DenseMatrix>(idx.size(), args_->dim, args_->binarization);
     for (auto i = 0; i < idx.size(); i++) {
       for (auto j = 0; j < args_->dim; j++) {
         ninput->at(i, j) = input->at(idx[i], j);
@@ -471,13 +471,13 @@ bool FastText::predictLine(
   return true;
 }
 
-void FastText::getSentenceVector(std::istream& in, fasttext::Vector& svec) {
+void FastText::getSentenceVector(std::istream& in, fasttext::Vector& svec, std::minstd_rand& rng, bool binarize) {
   svec.zero();
   if (args_->model == model_name::sup) {
     std::vector<int32_t> line, labels;
     dict_->getLine(in, line, labels);
     for (int32_t i = 0; i < line.size(); i++) {
-      addInputVector(svec, line[i]);
+      addInputVector(svec, line[i], rng, binarize);
     }
     if (!line.empty()) {
       svec.mul(1.0 / line.size());
@@ -490,7 +490,7 @@ void FastText::getSentenceVector(std::istream& in, fasttext::Vector& svec) {
     std::string word;
     int32_t count = 0;
     while (iss >> word) {
-      getWordVector(vec, word);
+      getWordVector(vec, word, rng, binarize);
       real norm = vec.norm();
       if (norm > 0) {
         vec.mul(1.0 / norm);
@@ -505,7 +505,7 @@ void FastText::getSentenceVector(std::istream& in, fasttext::Vector& svec) {
 }
 
 std::vector<std::pair<std::string, Vector>> FastText::getNgramVectors(
-    const std::string& word) const {
+    const std::string& word, std::minstd_rand& rng) const {
   std::vector<std::pair<std::string, Vector>> result;
   std::vector<int32_t> ngrams;
   std::vector<std::string> substrings;
@@ -514,7 +514,7 @@ std::vector<std::pair<std::string, Vector>> FastText::getNgramVectors(
   for (int32_t i = 0; i < ngrams.size(); i++) {
     Vector vec(args_->dim);
     if (ngrams[i] >= 0) {
-      vec.addRow(*input_, ngrams[i]);
+      vec.addRow(*input_, ngrams[i], rng, args_->binarization != binarization_name::sbc);
     }
     result.push_back(std::make_pair(substrings[i], std::move(vec)));
   }
@@ -522,21 +522,21 @@ std::vector<std::pair<std::string, Vector>> FastText::getNgramVectors(
 }
 
 // deprecated. use getNgramVectors instead
-void FastText::ngramVectors(std::string word) {
+void FastText::ngramVectors(std::string word, std::minstd_rand& rng) {
   std::vector<std::pair<std::string, Vector>> ngramVectors =
-      getNgramVectors(word);
+      getNgramVectors(word, rng);
 
   for (const auto& ngramVector : ngramVectors) {
     std::cout << ngramVector.first << " " << ngramVector.second << std::endl;
   }
 }
 
-void FastText::precomputeWordVectors(DenseMatrix& wordVectors) {
+void FastText::precomputeWordVectors(DenseMatrix& wordVectors, std::minstd_rand& rng) {
   Vector vec(args_->dim);
   wordVectors.zero();
   for (int32_t i = 0; i < dict_->nwords(); i++) {
     std::string word = dict_->getWord(i);
-    getWordVector(vec, word);
+    getWordVector(vec, word, rng);
     real norm = vec.norm();
     if (norm > 0) {
       wordVectors.addVectorToRow(vec, i, 1.0 / norm);
@@ -544,31 +544,33 @@ void FastText::precomputeWordVectors(DenseMatrix& wordVectors) {
   }
 }
 
-void FastText::lazyComputeWordVectors() {
+void FastText::lazyComputeWordVectors(std::minstd_rand& rng) {
   if (!wordVectors_) {
     wordVectors_ = std::unique_ptr<DenseMatrix>(
-        new DenseMatrix(dict_->nwords(), args_->dim));
-    precomputeWordVectors(*wordVectors_);
+        new DenseMatrix(dict_->nwords(), args_->dim, args_->binarization));
+    precomputeWordVectors(*wordVectors_, rng);
   }
 }
 
 std::vector<std::pair<real, std::string>> FastText::getNN(
     const std::string& word,
-    int32_t k) {
+    int32_t k,
+    std::minstd_rand& rng) {
   Vector query(args_->dim);
 
-  getWordVector(query, word);
+  getWordVector(query, word, rng);
 
-  lazyComputeWordVectors();
+  lazyComputeWordVectors(rng);
   assert(wordVectors_);
-  return getNN(*wordVectors_, query, k, {word});
+  return getNN(*wordVectors_, query, k, {word}, rng);
 }
 
 std::vector<std::pair<real, std::string>> FastText::getNN(
     const DenseMatrix& wordVectors,
     const Vector& query,
     int32_t k,
-    const std::set<std::string>& banSet) {
+    const std::set<std::string>& banSet,
+    std::minstd_rand& rng) {
   std::vector<std::pair<real, std::string>> heap;
 
   real queryNorm = query.norm();
@@ -579,7 +581,7 @@ std::vector<std::pair<real, std::string>> FastText::getNN(
   for (int32_t i = 0; i < dict_->nwords(); i++) {
     std::string word = dict_->getWord(i);
     if (banSet.find(word) == banSet.end()) {
-      real dp = wordVectors.dotRow(query, i);
+      real dp = wordVectors.dotRow(query, i, rng, false);
       real similarity = dp / queryNorm;
 
       if (heap.size() == k && similarity < heap.front().first) {
@@ -604,34 +606,36 @@ void FastText::findNN(
     const Vector& query,
     int32_t k,
     const std::set<std::string>& banSet,
-    std::vector<std::pair<real, std::string>>& results) {
+    std::vector<std::pair<real, std::string>>& results,
+    std::minstd_rand& rng) {
   results.clear();
-  results = getNN(wordVectors, query, k, banSet);
+  results = getNN(wordVectors, query, k, banSet, rng);
 }
 
 std::vector<std::pair<real, std::string>> FastText::getAnalogies(
     int32_t k,
     const std::string& wordA,
     const std::string& wordB,
-    const std::string& wordC) {
+    const std::string& wordC,
+    std::minstd_rand& rng) {
   Vector query = Vector(args_->dim);
   query.zero();
 
   Vector buffer(args_->dim);
-  getWordVector(buffer, wordA);
+  getWordVector(buffer, wordA, rng);
   query.addVector(buffer, 1.0 / (buffer.norm() + 1e-8));
-  getWordVector(buffer, wordB);
+  getWordVector(buffer, wordB, rng);
   query.addVector(buffer, -1.0 / (buffer.norm() + 1e-8));
-  getWordVector(buffer, wordC);
+  getWordVector(buffer, wordC, rng);
   query.addVector(buffer, 1.0 / (buffer.norm() + 1e-8));
 
-  lazyComputeWordVectors();
+  lazyComputeWordVectors(rng);
   assert(wordVectors_);
-  return getNN(*wordVectors_, query, k, {wordA, wordB, wordC});
+  return getNN(*wordVectors_, query, k, {wordA, wordB, wordC}, rng);
 }
 
 // depreacted, use getAnalogies instead
-void FastText::analogies(int32_t k) {
+void FastText::analogies(int32_t k, std::minstd_rand& rng) {
   std::string prompt("Query triplet (A - B + C)? ");
   std::string wordA, wordB, wordC;
   std::cout << prompt;
@@ -639,7 +643,7 @@ void FastText::analogies(int32_t k) {
     std::cin >> wordA;
     std::cin >> wordB;
     std::cin >> wordC;
-    auto results = getAnalogies(k, wordA, wordB, wordC);
+    auto results = getAnalogies(k, wordA, wordB, wordC, rng);
 
     for (auto& pair : results) {
       std::cout << pair.second << " " << pair.first << std::endl;
@@ -697,7 +701,7 @@ std::shared_ptr<Matrix> FastText::getInputMatrixFromFile(
         "Dimension of pretrained vectors (" + std::to_string(dim) +
         ") does not match dimension (" + std::to_string(args_->dim) + ")!");
   }
-  mat = std::make_shared<DenseMatrix>(n, dim);
+  mat = std::make_shared<DenseMatrix>(n, dim, args_->binarization);
   for (size_t i = 0; i < n; i++) {
     std::string word;
     in >> word;
@@ -712,7 +716,7 @@ std::shared_ptr<Matrix> FastText::getInputMatrixFromFile(
   dict_->threshold(1, 0);
   dict_->init();
   std::shared_ptr<DenseMatrix> input = std::make_shared<DenseMatrix>(
-      dict_->nwords() + args_->bucket, args_->dim);
+      dict_->nwords() + args_->bucket, args_->dim, args_->binarization);
   input->uniform(1.0 / args_->dim);
 
   for (size_t i = 0; i < n; i++) {
@@ -733,7 +737,7 @@ void FastText::loadVectors(const std::string& filename) {
 
 std::shared_ptr<Matrix> FastText::createRandomMatrix() const {
   std::shared_ptr<DenseMatrix> input = std::make_shared<DenseMatrix>(
-      dict_->nwords() + args_->bucket, args_->dim);
+      dict_->nwords() + args_->bucket, args_->dim, args_->binarization);
   input->uniform(1.0 / args_->dim);
 
   return input;
@@ -743,7 +747,7 @@ std::shared_ptr<Matrix> FastText::createTrainOutputMatrix() const {
   int64_t m =
       (args_->model == model_name::sup) ? dict_->nlabels() : dict_->nwords();
   std::shared_ptr<DenseMatrix> output =
-      std::make_shared<DenseMatrix>(m, args_->dim);
+      std::make_shared<DenseMatrix>(m, args_->dim, args_->binarization);
   output->zero();
 
   return output;
