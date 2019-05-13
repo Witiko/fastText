@@ -13,6 +13,7 @@
 #include <ostream>
 
 #include <memory>
+#include <random>
 #include <vector>
 
 #include "real.h"
@@ -48,10 +49,10 @@ class QuantMatrix : public Matrix {
   void quantizeNorm(const Vector&);
   void quantize(DenseMatrix&& mat);
 
-  real dotRow(const Vector&, int64_t) const override;
+  real dotRow(const Vector&, int64_t, std::minstd_rand&) const override;
   void addVectorToRow(const Vector&, int64_t, real) override;
-  void addRowToVector(Vector& x, int32_t i) const override;
-  void addRowToVector(Vector& x, int32_t i, real a) const override;
+  void addRowToVector(Vector& x, int32_t i, std::minstd_rand&, bool=true) const override;
+  void addRowToVector(Vector& x, int32_t i, real a, std::minstd_rand&, bool=true) const override;
   void save(std::ostream&) const override;
   void load(std::istream&) override;
   void dump(std::ostream&) const override;

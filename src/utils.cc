@@ -14,6 +14,20 @@ namespace fasttext {
 
 namespace utils {
 
+std::vector<real> t_sigmoid;
+
+real sigmoid(real x) {
+  if (x < -MAX_SIGMOID) {
+    return 0.0;
+  } else if (x > MAX_SIGMOID) {
+    return 1.0;
+  } else {
+    int64_t i =
+        int64_t((x + MAX_SIGMOID) * SIGMOID_TABLE_SIZE / MAX_SIGMOID / 2);
+    return t_sigmoid[i];
+  }
+}
+
 int64_t size(std::ifstream& ifs) {
   ifs.seekg(std::streamoff(0), std::ios::end);
   return ifs.tellg();
@@ -23,6 +37,17 @@ void seek(std::ifstream& ifs, int64_t pos) {
   ifs.clear();
   ifs.seekg(std::streampos(pos));
 }
+
+real binarize(bool x) {
+  real sign = x ? 1 : -1;
+  return sign / 3;
+}
+
+real binarize(real x) {
+  real sign = x < 0 ? -1 : 1;
+  return sign / 3;
+}
+
 } // namespace utils
 
 } // namespace fasttext

@@ -49,7 +49,7 @@ void QuantMatrix::quantize(DenseMatrix&& mat) {
   pq_->compute_codes(dataptr, codes_.data(), m_);
 }
 
-real QuantMatrix::dotRow(const Vector& vec, int64_t i) const {
+real QuantMatrix::dotRow(const Vector& vec, int64_t i, std::minstd_rand&) const {
   assert(i >= 0);
   assert(i < m_);
   assert(vec.size() == n_);
@@ -64,7 +64,7 @@ void QuantMatrix::addVectorToRow(const Vector&, int64_t, real) {
   throw std::runtime_error("Operation not permitted on quantized matrices.");
 }
 
-void QuantMatrix::addRowToVector(Vector& x, int32_t i, real a) const {
+void QuantMatrix::addRowToVector(Vector& x, int32_t i, real a, std::minstd_rand&, bool) const {
   real norm = 1;
   if (qnorm_) {
     norm = npq_->get_centroids(0, norm_codes_[i])[0];
@@ -72,7 +72,7 @@ void QuantMatrix::addRowToVector(Vector& x, int32_t i, real a) const {
   pq_->addcode(x, codes_.data(), i, a * norm);
 }
 
-void QuantMatrix::addRowToVector(Vector& x, int32_t i) const {
+void QuantMatrix::addRowToVector(Vector& x, int32_t i, std::minstd_rand&, bool) const {
   real norm = 1;
   if (qnorm_) {
     norm = npq_->get_centroids(0, norm_codes_[i])[0];

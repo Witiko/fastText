@@ -13,8 +13,6 @@
 
 namespace fasttext {
 
-constexpr int64_t SIGMOID_TABLE_SIZE = 512;
-constexpr int64_t MAX_SIGMOID = 8;
 constexpr int64_t LOG_TABLE_SIZE = 512;
 
 bool comparePairs(
@@ -28,12 +26,6 @@ real std_log(real x) {
 }
 
 Loss::Loss(std::shared_ptr<Matrix>& wo) : wo_(wo) {
-  t_sigmoid_.reserve(SIGMOID_TABLE_SIZE + 1);
-  for (int i = 0; i < SIGMOID_TABLE_SIZE + 1; i++) {
-    real x = real(i * 2 * MAX_SIGMOID) / SIGMOID_TABLE_SIZE - MAX_SIGMOID;
-    t_sigmoid_.push_back(1.0 / (1.0 + std::exp(-x)));
-  }
-
   t_log_.reserve(LOG_TABLE_SIZE + 1);
   for (int i = 0; i < LOG_TABLE_SIZE + 1; i++) {
     real x = (real(i) + 1e-5) / LOG_TABLE_SIZE;
@@ -47,18 +39,6 @@ real Loss::log(real x) const {
   }
   int64_t i = int64_t(x * LOG_TABLE_SIZE);
   return t_log_[i];
-}
-
-real Loss::sigmoid(real x) const {
-  if (x < -MAX_SIGMOID) {
-    return 0.0;
-  } else if (x > MAX_SIGMOID) {
-    return 1.0;
-  } else {
-    int64_t i =
-        int64_t((x + MAX_SIGMOID) * SIGMOID_TABLE_SIZE / MAX_SIGMOID / 2);
-    return t_sigmoid_[i];
-  }
 }
 
 void Loss::predict(
@@ -101,10 +81,10 @@ real BinaryLogisticLoss::binaryLogistic(
     bool labelIsPositive,
     real lr,
     bool backprop) const {
-  real score = sigmoid(wo_->dotRow(state.hidden, target));
+  real score = utils::sigmoid(wo_->dotRow(state.hidden, target, state.rng));
   if (backprop) {
     real alpha = lr * (real(labelIsPositive) - score);
-    state.grad.addRow(*wo_, target, alpha);
+    state.grad.addRow(*wo_, target, alpha, state.rng);
     wo_->addVectorToRow(state.hidden, target, alpha);
   }
   if (labelIsPositive) {
@@ -116,10 +96,10 @@ real BinaryLogisticLoss::binaryLogistic(
 
 void BinaryLogisticLoss::computeOutput(Model::State& state) const {
   Vector& output = state.output;
-  output.mul(*wo_, state.hidden);
+  output.mul(*wo_, state.hidden, state.rng);
   int32_t osz = output.size();
   for (int32_t i = 0; i < osz; i++) {
-    output[i] = sigmoid(output[i]);
+    output[i] = utils::sigmoid(output[i]);
   }
 }
 
@@ -265,7 +245,7 @@ void HierarchicalSoftmaxLoss::predict(
     real threshold,
     Predictions& heap,
     Model::State& state) const {
-  dfs(k, threshold, 2 * osz_ - 2, 0.0, heap, state.hidden);
+  dfs(k, threshold, 2 * osz_ - 2, 0.0, heap, state.hidden, state.rng);
   std::sort_heap(heap.begin(), heap.end(), comparePairs);
 }
 
@@ -275,7 +255,8 @@ void HierarchicalSoftmaxLoss::dfs(
     int32_t node,
     real score,
     Predictions& heap,
-    const Vector& hidden) const {
+    const Vector& hidden,
+    std::minstd_rand& rng) const {
   if (score < std_log(threshold)) {
     return;
   }
@@ -293,18 +274,18 @@ void HierarchicalSoftmaxLoss::dfs(
     return;
   }
 
-  real f = wo_->dotRow(hidden, node - osz_);
+  real f = wo_->dotRow(hidden, node - osz_, rng);
   f = 1. / (1 + std::exp(-f));
 
-  dfs(k, threshold, tree_[node].left, score + std_log(1.0 - f), heap, hidden);
-  dfs(k, threshold, tree_[node].right, score + std_log(f), heap, hidden);
+  dfs(k, threshold, tree_[node].left, score + std_log(1.0 - f), heap, hidden, rng);
+  dfs(k, threshold, tree_[node].right, score + std_log(f), heap, hidden, rng);
 }
 
 SoftmaxLoss::SoftmaxLoss(std::shared_ptr<Matrix>& wo) : Loss(wo) {}
 
 void SoftmaxLoss::computeOutput(Model::State& state) const {
   Vector& output = state.output;
-  output.mul(*wo_, state.hidden);
+  output.mul(*wo_, state.hidden, state.rng);
   real max = output[0], z = 0.0;
   int32_t osz = output.size();
   for (int32_t i = 0; i < osz; i++) {
@@ -336,7 +317,7 @@ real SoftmaxLoss::forward(
     for (int32_t i = 0; i < osz; i++) {
       real label = (i == target) ? 1.0 : 0.0;
       real alpha = lr * (label - state.output[i]);
-      state.grad.addRow(*wo_, i, alpha);
+      state.grad.addRow(*wo_, i, alpha, state.rng);
       wo_->addVectorToRow(state.hidden, i, alpha);
     }
   }

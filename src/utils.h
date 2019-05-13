@@ -28,6 +28,13 @@ using Predictions = std::vector<std::pair<real, int32_t>>;
 
 namespace utils {
 
+constexpr int64_t SIGMOID_TABLE_SIZE = 512;
+constexpr int64_t MAX_SIGMOID = 8;
+
+extern std::vector<real> t_sigmoid;
+
+real sigmoid(real x);
+
 int64_t size(std::ifstream&);
 
 void seek(std::ifstream&, int64_t);
@@ -37,6 +44,9 @@ bool contains(const std::vector<T>& container, const T& value) {
   return std::find(container.begin(), container.end(), value) !=
       container.end();
 }
+
+real binarize(real x);
+real binarize(bool x);
 
 } // namespace utils
 

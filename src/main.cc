@@ -9,9 +9,11 @@
 #include <iomanip>
 #include <iostream>
 #include <queue>
+#include <random>
 #include <stdexcept>
 #include "args.h"
 #include "fasttext.h"
+#include "utils.h"
 
 using namespace fasttext;
 
@@ -251,8 +253,9 @@ void printWordVectors(const std::vector<std::string> args) {
   fasttext.loadModel(std::string(args[2]));
   std::string word;
   Vector vec(fasttext.getDimension());
+  std::minstd_rand rng(0);
   while (std::cin >> word) {
-    fasttext.getWordVector(vec, word);
+    fasttext.getWordVector(vec, word, rng);
     std::cout << word << " " << vec << std::endl;
   }
   exit(0);
@@ -266,8 +269,9 @@ void printSentenceVectors(const std::vector<std::string> args) {
   FastText fasttext;
   fasttext.loadModel(std::string(args[2]));
   Vector svec(fasttext.getDimension());
+  std::minstd_rand rng(0);
   while (std::cin.peek() != EOF) {
-    fasttext.getSentenceVector(std::cin, svec);
+    fasttext.getSentenceVector(std::cin, svec, rng);
     // Don't print sentence
     std::cout << svec << std::endl;
   }
@@ -283,8 +287,9 @@ void printNgrams(const std::vector<std::string> args) {
   fasttext.loadModel(std::string(args[2]));
 
   std::string word(args[3]);
+  std::minstd_rand rng(0);
   std::vector<std::pair<std::string, Vector>> ngramVectors =
-      fasttext.getNgramVectors(word);
+      fasttext.getNgramVectors(word, rng);
 
   for (const auto& ngramVector : ngramVectors) {
     std::cout << ngramVector.first << " " << ngramVector.second << std::endl;
@@ -309,8 +314,9 @@ void nn(const std::vector<std::string> args) {
   std::cout << prompt;
 
   std::string queryWord;
+  std::minstd_rand rng(0);
   while (std::cin >> queryWord) {
-    printPredictions(fasttext.getNN(queryWord, k), true, true);
+    printPredictions(fasttext.getNN(queryWord, k, rng), true, true);
     std::cout << prompt;
   }
   exit(0);
@@ -337,11 +343,12 @@ void analogies(const std::vector<std::string> args) {
   std::string prompt("Query triplet (A - B + C)? ");
   std::string wordA, wordB, wordC;
   std::cout << prompt;
+  std::minstd_rand rng(0);
   while (true) {
     std::cin >> wordA;
     std::cin >> wordB;
     std::cin >> wordC;
-    printPredictions(fasttext.getAnalogies(k, wordA, wordB, wordC), true, true);
+    printPredictions(fasttext.getAnalogies(k, wordA, wordB, wordC, rng), true, true);
 
     std::cout << prompt;
   }
@@ -361,9 +368,10 @@ void train(const std::vector<std::string> args) {
   ofs.close();
   fasttext.train(a);
   fasttext.saveModel(outputFileName);
-  fasttext.saveVectors(a.output + ".vec");
+  std::minstd_rand rng(0);
+  fasttext.saveVectors(a.output + ".vec", rng);
   if (a.saveOutput) {
-    fasttext.saveOutput(a.output + ".output");
+    fasttext.saveOutput(a.output + ".output", rng);
   }
 }
 
@@ -401,6 +409,11 @@ void dump(const std::vector<std::string>& args) {
 }
 
 int main(int argc, char** argv) {
+  utils::t_sigmoid.reserve(utils::SIGMOID_TABLE_SIZE + 1);
+  for (int i = 0; i < utils::SIGMOID_TABLE_SIZE + 1; i++) {
+    real x = real(i * 2 * utils::MAX_SIGMOID) / utils::SIGMOID_TABLE_SIZE - utils::MAX_SIGMOID;
+    utils::t_sigmoid.push_back(1.0 / (1.0 + std::exp(-x)));
+  }
   std::vector<std::string> args(argv, argv + argc);
   if (args.size() < 2) {
     printUsage();

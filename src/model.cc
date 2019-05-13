@@ -45,7 +45,7 @@ void Model::computeHidden(const std::vector<int32_t>& input, State& state)
   Vector& hidden = state.hidden;
   hidden.zero();
   for (auto it = input.cbegin(); it != input.cend(); ++it) {
-    hidden.addRow(*wi_, *it);
+    hidden.addRow(*wi_, *it, state.rng);
   }
   hidden.mul(1.0 / input.size());
 }

@@ -47,14 +47,15 @@ class FastText {
   void signModel(std::ostream&);
   bool checkModel(std::istream&);
   void startThreads();
-  void addInputVector(Vector&, int32_t) const;
+  void addInputVector(Vector&, int32_t, std::minstd_rand&) const;
   void trainThread(int32_t);
   std::vector<std::pair<real, std::string>> getNN(
       const DenseMatrix& wordVectors,
       const Vector& queryVec,
       int32_t k,
-      const std::set<std::string>& banSet);
-  void lazyComputeWordVectors();
+      const std::set<std::string>& banSet,
+      std::minstd_rand&);
+  void lazyComputeWordVectors(std::minstd_rand& rng);
   void printInfo(real, real, std::ostream&);
   std::shared_ptr<Matrix> getInputMatrixFromFile(const std::string&) const;
   std::shared_ptr<Matrix> createRandomMatrix() const;
@@ -80,13 +81,13 @@ class FastText {
 
   int32_t getSubwordId(const std::string& subword) const;
 
-  void getWordVector(Vector& vec, const std::string& word) const;
+  void getWordVector(Vector& vec, const std::string& word, std::minstd_rand&) const;
 
-  void getSubwordVector(Vector& vec, const std::string& subword) const;
+  void getSubwordVector(Vector& vec, const std::string& subword, std::minstd_rand&) const;
 
-  inline void getInputVector(Vector& vec, int32_t ind) {
+  inline void getInputVector(Vector& vec, int32_t ind, std::minstd_rand& rng) {
     vec.zero();
-    addInputVector(vec, ind);
+    addInputVector(vec, ind, rng);
   }
 
   const Args getArgs() const;
@@ -97,17 +98,17 @@ class FastText {
 
   std::shared_ptr<const DenseMatrix> getOutputMatrix() const;
 
-  void saveVectors(const std::string& filename);
+  void saveVectors(const std::string& filename, std::minstd_rand&);
 
   void saveModel(const std::string& filename);
 
-  void saveOutput(const std::string& filename);
+  void saveOutput(const std::string& filename, std::minstd_rand&);
 
   void loadModel(std::istream& in);
 
   void loadModel(const std::string& filename);
 
-  void getSentenceVector(std::istream& in, Vector& vec);
+  void getSentenceVector(std::istream& in, Vector& vec, std::minstd_rand&);
 
   void quantize(const Args& qargs);
 
@@ -129,17 +130,19 @@ class FastText {
       real threshold) const;
 
   std::vector<std::pair<std::string, Vector>> getNgramVectors(
-      const std::string& word) const;
+      const std::string& word, std::minstd_rand&) const;
 
   std::vector<std::pair<real, std::string>> getNN(
       const std::string& word,
-      int32_t k);
+      int32_t k,
+      std::minstd_rand&);
 
   std::vector<std::pair<real, std::string>> getAnalogies(
       int32_t k,
       const std::string& wordA,
       const std::string& wordB,
-      const std::string& wordC);
+      const std::string& wordC,
+      std::minstd_rand&);
 
   void train(const Args& args);
 
@@ -152,33 +155,33 @@ class FastText {
 
   FASTTEXT_DEPRECATED(
       "getVector is being deprecated and replaced by getWordVector.")
-  void getVector(Vector& vec, const std::string& word) const;
+  void getVector(Vector& vec, const std::string& word, std::minstd_rand&) const;
 
   FASTTEXT_DEPRECATED(
       "ngramVectors is being deprecated and replaced by getNgramVectors.")
-  void ngramVectors(std::string word);
+  void ngramVectors(std::string word, std::minstd_rand&);
 
   FASTTEXT_DEPRECATED(
       "analogies is being deprecated and replaced by getAnalogies.")
-  void analogies(int32_t k);
+  void analogies(int32_t k, std::minstd_rand&);
 
   FASTTEXT_DEPRECATED("selectEmbeddings is being deprecated.")
   std::vector<int32_t> selectEmbeddings(int32_t cutoff) const;
 
   FASTTEXT_DEPRECATED(
       "saveVectors is being deprecated, please use the other signature.")
-  void saveVectors();
+  void saveVectors(std::minstd_rand&);
 
   FASTTEXT_DEPRECATED(
       "saveOutput is being deprecated, please use the other signature.")
-  void saveOutput();
+  void saveOutput(std::minstd_rand&);
 
   FASTTEXT_DEPRECATED(
       "saveModel is being deprecated, please use the other signature.")
   void saveModel();
 
   FASTTEXT_DEPRECATED("precomputeWordVectors is being deprecated.")
-  void precomputeWordVectors(DenseMatrix& wordVectors);
+  void precomputeWordVectors(DenseMatrix& wordVectors, std::minstd_rand&);
 
   FASTTEXT_DEPRECATED("findNN is being deprecated and replaced by getNN.")
   void findNN(
@@ -186,6 +189,7 @@ class FastText {
       const Vector& query,
       int32_t k,
       const std::set<std::string>& banSet,
-      std::vector<std::pair<real, std::string>>& results);
+      std::vector<std::pair<real, std::string>>& results,
+      std::minstd_rand&);
 };
 } // namespace fasttext

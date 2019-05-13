@@ -18,12 +18,17 @@
 
 namespace fasttext {
 
-DenseMatrix::DenseMatrix() : DenseMatrix(0, 0) {}
+DenseMatrix::DenseMatrix(binarization_name bn) : DenseMatrix(0, 0, bn) {}
 
-DenseMatrix::DenseMatrix(int64_t m, int64_t n) : Matrix(m, n), data_(m * n) {}
+DenseMatrix::DenseMatrix(int64_t m, int64_t n, binarization_name bn)
+    : Matrix(m, n),
+      data_(m * n),
+      bn_(bn) {}
 
 DenseMatrix::DenseMatrix(DenseMatrix&& other) noexcept
-    : Matrix(other.m_, other.n_), data_(std::move(other.data_)) {}
+    : Matrix(other.m_, other.n_),
+      data_(std::move(other.data_)),
+      bn_(std::move(other.bn_)) {}
 
 void DenseMatrix::zero() {
   std::fill(data_.begin(), data_.end(), 0.0);
@@ -85,13 +90,33 @@ void DenseMatrix::l2NormRow(Vector& norms) const {
   }
 }
 
-real DenseMatrix::dotRow(const Vector& vec, int64_t i) const {
+real DenseMatrix::dotRow(
+    const Vector& vec,
+    int64_t i,
+    std::minstd_rand& rng) const {
   assert(i >= 0);
   assert(i < m_);
   assert(vec.size() == n_);
   real d = 0.0;
-  for (int64_t j = 0; j < n_; j++) {
-    d += at(i, j) * vec[j];
+  switch (bn_) {
+    case binarization_name::none:
+      for (int64_t j = 0; j < n_; j++) {
+        d += at(i, j) * vec[j];
+      }
+      break;
+    case binarization_name::dbc:
+      for (int64_t j = 0; j < n_; j++) {
+        d += utils::binarize(at(i, j)) * vec[j];
+      }
+      break;
+    case binarization_name::sbc:
+      std::uniform_real_distribution<> uniform(0.0, 1.0);
+      real p;
+      for (int64_t j = 0; j < n_; j++) {
+        p = utils::sigmoid(at(i, j));
+        d += utils::binarize(uniform(rng) < p) * vec[j];
+      }
+      break;
   }
   if (std::isnan(d)) {
     throw std::runtime_error("Encountered NaN.");
@@ -108,21 +133,76 @@ void DenseMatrix::addVectorToRow(const Vector& vec, int64_t i, real a) {
   }
 }
 
-void DenseMatrix::addRowToVector(Vector& x, int32_t i) const {
+void DenseMatrix::addRowToVector(
+    Vector& x,
+    int32_t i,
+    std::minstd_rand& rng,
+    bool binarize) const {
   assert(i >= 0);
   assert(i < this->size(0));
   assert(x.size() == this->size(1));
-  for (int64_t j = 0; j < this->size(1); j++) {
-    x[j] += at(i, j);
+  if (!binarize) {
+    for (int64_t j = 0; j < this->size(1); j++) {
+      x[j] += at(i, j);
+    }
+  } else {
+    switch (bn_) {
+      case binarization_name::none:
+        for (int64_t j = 0; j < this->size(1); j++) {
+          x[j] += at(i, j);
+        }
+        break;
+      case binarization_name::dbc:
+        for (int64_t j = 0; j < this->size(1); j++) {
+          x[j] += utils::binarize(at(i, j));
+        }
+        break;
+      case binarization_name::sbc:
+        std::uniform_real_distribution<> uniform(0.0, 1.0);
+        real p;
+        for (int64_t j = 0; j < this->size(1); j++) {
+          p = utils::sigmoid(at(i, j));
+          x[j] += utils::binarize(uniform(rng) < p);
+        }
+        break;
+    }
   }
 }
 
-void DenseMatrix::addRowToVector(Vector& x, int32_t i, real a) const {
+void DenseMatrix::addRowToVector(
+    Vector& x,
+    int32_t i,
+    real a,
+    std::minstd_rand& rng,
+    bool binarize) const {
   assert(i >= 0);
   assert(i < this->size(0));
   assert(x.size() == this->size(1));
-  for (int64_t j = 0; j < this->size(1); j++) {
-    x[j] += a * at(i, j);
+  if (!binarize) {
+    for (int64_t j = 0; j < this->size(1); j++) {
+      x[j] += a * at(i, j);
+    }
+  } else {
+    switch (bn_) {
+      case binarization_name::none:
+        for (int64_t j = 0; j < this->size(1); j++) {
+          x[j] += a * at(i, j);
+        }
+        break;
+      case binarization_name::dbc:
+        for (int64_t j = 0; j < this->size(1); j++) {
+          x[j] += a * utils::binarize(at(i, j));
+        }
+        break;
+      case binarization_name::sbc:
+        std::uniform_real_distribution<> uniform(0.0, 1.0);
+        real p;
+        for (int64_t j = 0; j < this->size(1); j++) {
+          p = utils::sigmoid(at(i, j));
+          x[j] += a * utils::binarize(uniform(rng) < p);
+        }
+        break;
+    }
   }
 }
 

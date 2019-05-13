@@ -29,12 +29,10 @@ class Loss {
       const Vector& output) const;
 
  protected:
-  std::vector<real> t_sigmoid_;
   std::vector<real> t_log_;
   std::shared_ptr<Matrix>& wo_;
 
   real log(real x) const;
-  real sigmoid(real x) const;
 
  public:
   explicit Loss(std::shared_ptr<Matrix>& wo);
@@ -127,7 +125,8 @@ class HierarchicalSoftmaxLoss : public BinaryLogisticLoss {
       int32_t node,
       real score,
       Predictions& heap,
-      const Vector& hidden) const;
+      const Vector& hidden,
+      std::minstd_rand& rng) const;
 
  public:
   explicit HierarchicalSoftmaxLoss(
