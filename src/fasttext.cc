@@ -287,7 +287,7 @@ void FastText::printInfo(real progress, real loss, std::ostream& log_stream) {
   log_stream << " loss: " << std::setw(9) << std::setprecision(6) << loss;
   log_stream << " ETA: " << std::setw(3) << etah;
   log_stream << "h" << std::setw(2) << etam << "m";
-  log_stream << std::flush;
+  log_stream << std::endl;
 }
 
 std::vector<int32_t> FastText::selectEmbeddings(int32_t cutoff) const {
@@ -794,7 +794,6 @@ void FastText::startThreads() {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (loss_ >= 0 && args_->verbose > 1) {
       real progress = real(tokenCount_) / (args_->epoch * ntokens);
-      std::cerr << "\r";
       printInfo(progress, loss_, std::cerr);
     }
   }
@@ -802,7 +801,6 @@ void FastText::startThreads() {
     threads[i].join();
   }
   if (args_->verbose > 0) {
-    std::cerr << "\r";
     printInfo(1.0, loss_, std::cerr);
     std::cerr << std::endl;
   }
