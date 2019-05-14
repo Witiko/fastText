@@ -21,6 +21,8 @@ Args::Args() {
   dim = 100;
   ws = 5;
   epoch = 5;
+  epochSkip = 0;
+  epochTotal = Args::implicit;
   minCount = 5;
   minCountLabel = 0;
   neg = 5;
@@ -37,6 +39,7 @@ Args::Args() {
   label = "__label__";
   verbose = 2;
   pretrainedVectors = "";
+  pretrainedModel = "";
   saveOutput = false;
 
   qout = false;
@@ -131,6 +134,10 @@ void Args::parseArgs(const std::vector<std::string>& args) {
         ws = std::stoi(args.at(ai + 1));
       } else if (args[ai] == "-epoch") {
         epoch = std::stoi(args.at(ai + 1));
+      } else if (args[ai] == "-epochSkip") {
+        epochSkip = std::stoi(args.at(ai + 1));
+      } else if (args[ai] == "-epochTotal") {
+        epochTotal = std::stoi(args.at(ai + 1));
       } else if (args[ai] == "-minCount") {
         minCount = std::stoi(args.at(ai + 1));
       } else if (args[ai] == "-minCountLabel") {
@@ -182,6 +189,8 @@ void Args::parseArgs(const std::vector<std::string>& args) {
         verbose = std::stoi(args.at(ai + 1));
       } else if (args[ai] == "-pretrainedVectors") {
         pretrainedVectors = std::string(args.at(ai + 1));
+      } else if (args[ai] == "-pretrainedModel") {
+        pretrainedModel = std::string(args.at(ai + 1));
       } else if (args[ai] == "-saveOutput") {
         saveOutput = true;
         ai--;
@@ -216,6 +225,9 @@ void Args::parseArgs(const std::vector<std::string>& args) {
   }
   if (wordNgrams <= 1 && maxn == 0) {
     bucket = 0;
+  }
+  if (epochTotal == Args::implicit) {
+    epochTotal = epochSkip + epoch;
   }
 }
 
@@ -260,7 +272,13 @@ void Args::printTrainingHelp() {
       << lrUpdateRate << "]\n"
       << "  -dim                size of word vectors [" << dim << "]\n"
       << "  -ws                 size of the context window [" << ws << "]\n"
-      << "  -epoch              number of epochs [" << epoch << "]\n"
+      << "  -epoch              number of epochs to train in this step ["
+      << epoch << "]\n"
+      << "  -epochSkip          number of epochs already trained in previous steps ["
+      << epochSkip << "]\n"
+      << "  -epochTotal         total number of epochs in stepwise training ["
+      << "epochSkip + epoch = "
+      << (epochSkip + epoch) << "]\n"
       << "  -neg                number of negatives sampled [" << neg << "]\n"
       << "  -loss               loss function {ns, hs, softmax, one-vs-all} ["
       << lossToString(loss) << "]\n"
@@ -269,6 +287,8 @@ void Args::printTrainingHelp() {
       << "  -thread             number of threads [" << thread << "]\n"
       << "  -pretrainedVectors  pretrained word vectors for supervised learning ["
       << pretrainedVectors << "]\n"
+      << "  -pretrainedModel    pretrained model for stepwise training ["
+      << pretrainedModel << "]\n"
       << "  -saveOutput         whether output params should be saved ["
       << boolToString(saveOutput) << "]\n";
 }
@@ -291,6 +311,8 @@ void Args::save(std::ostream& out) {
   out.write((char*)&(dim), sizeof(int));
   out.write((char*)&(ws), sizeof(int));
   out.write((char*)&(epoch), sizeof(int));
+  out.write((char*)&(epochSkip), sizeof(int));
+  out.write((char*)&(epochTotal), sizeof(int));
   out.write((char*)&(minCount), sizeof(int));
   out.write((char*)&(neg), sizeof(int));
   out.write((char*)&(wordNgrams), sizeof(int));
@@ -309,6 +331,8 @@ void Args::load(std::istream& in) {
   in.read((char*)&(dim), sizeof(int));
   in.read((char*)&(ws), sizeof(int));
   in.read((char*)&(epoch), sizeof(int));
+  in.read((char*)&(epochSkip), sizeof(int));
+  in.read((char*)&(epochTotal), sizeof(int));
   in.read((char*)&(minCount), sizeof(int));
   in.read((char*)&(neg), sizeof(int));
   in.read((char*)&(wordNgrams), sizeof(int));
@@ -330,6 +354,10 @@ void Args::dump(std::ostream& out) const {
       << " " << ws << std::endl;
   out << "epoch"
       << " " << epoch << std::endl;
+  out << "epochSkip"
+      << " " << epochSkip << std::endl;
+  out << "epochTotal"
+      << " " << epochTotal << std::endl;
   out << "minCount"
       << " " << minCount << std::endl;
   out << "neg"

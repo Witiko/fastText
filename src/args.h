@@ -36,6 +36,8 @@ class Args {
   int dim;
   int ws;
   int epoch;
+  int epochSkip;
+  int epochTotal;
   int minCount;
   int minCountLabel;
   int neg;
@@ -51,6 +53,7 @@ class Args {
   std::string label;
   int verbose;
   std::string pretrainedVectors;
+  std::string pretrainedModel;
   bool saveOutput;
 
   bool qout;
@@ -68,5 +71,7 @@ class Args {
   void save(std::ostream&);
   void load(std::istream&);
   void dump(std::ostream&) const;
+
+  static const int32_t implicit = -1;
 };
 } // namespace fasttext

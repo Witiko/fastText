@@ -187,6 +187,9 @@ void FastText::saveModel() {
 }
 
 void FastText::saveModel(const std::string& filename) {
+  std::cerr << "Saving model to file " << filename;
+  std::cerr << std::endl;
+
   std::ofstream ofs(filename, std::ofstream::binary);
   if (!ofs.is_open()) {
     throw std::invalid_argument(filename + " cannot be opened for saving!");
@@ -202,9 +205,15 @@ void FastText::saveModel(const std::string& filename) {
   output_->save(ofs);
 
   ofs.close();
+
+  std::cerr << "Saved model to file " << filename;
+  std::cerr << std::endl;
 }
 
 void FastText::loadModel(const std::string& filename) {
+  std::cerr << "Loading model from file " << filename;
+  std::cerr << std::endl;
+
   std::ifstream ifs(filename, std::ifstream::binary);
   if (!ifs.is_open()) {
     throw std::invalid_argument(filename + " cannot be opened for loading!");
@@ -214,6 +223,9 @@ void FastText::loadModel(const std::string& filename) {
   }
   loadModel(ifs);
   ifs.close();
+
+  std::cerr << "Loaded model from file " << filename;
+  std::cerr << std::endl;
 }
 
 std::vector<int64_t> FastText::getTargetCounts() const {
@@ -261,20 +273,21 @@ void FastText::loadModel(std::istream& in) {
   model_ = std::make_shared<Model>(input_, output_, loss, normalizeGradient);
 }
 
-void FastText::printInfo(real progress, real loss, std::ostream& log_stream) {
+void FastText::printInfo(real loss, std::ostream& log_stream) {
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-  double t =
-      std::chrono::duration_cast<std::chrono::duration<double>>(end - start_)
+  real t =
+      std::chrono::duration_cast<std::chrono::duration<real>>(end - start_)
           .count();
-  double lr = args_->lr * (1.0 - progress);
-  double wst = 0;
+  real progress = local_progress();
+  real lr = args_->lr * (1.0 - global_progress());
+  real wst = 0;
 
   int64_t eta = 2592000; // Default to one month in seconds (720 * 3600)
 
   if (progress > 0 && t >= 0) {
     progress = progress * 100;
     eta = t * (100 - progress) / progress;
-    wst = double(tokenCount_) / t / args_->thread;
+    wst = real(tokenCount_) / t / args_->thread;
   }
   int32_t etah = eta / 3600;
   int32_t etam = (eta % 3600) / 60;
@@ -652,6 +665,14 @@ void FastText::analogies(int32_t k, std::minstd_rand& rng) {
   }
 }
 
+real FastText::local_progress() const {
+  return real(tokenCount_) / (args_->epoch * dict_->ntokens());
+}
+
+real FastText::global_progress() const {
+  return (args_->epochSkip + real(tokenCount_) / dict_->ntokens()) / args_->epochTotal;
+}
+
 void FastText::trainThread(int32_t threadId) {
   std::ifstream ifs(args_->input);
   utils::seek(ifs, threadId * utils::size(ifs) / args_->thread);
@@ -662,8 +683,7 @@ void FastText::trainThread(int32_t threadId) {
   int64_t localTokenCount = 0;
   std::vector<int32_t> line, labels;
   while (tokenCount_ < args_->epoch * ntokens) {
-    real progress = real(tokenCount_) / (args_->epoch * ntokens);
-    real lr = args_->lr * (1.0 - progress);
+    real lr = args_->lr * (1.0 - global_progress());
     if (args_->model == model_name::sup) {
       localTokenCount += dict_->getLine(ifs, line, labels);
       supervised(state, lr, line, labels);
@@ -754,29 +774,34 @@ std::shared_ptr<Matrix> FastText::createTrainOutputMatrix() const {
 }
 
 void FastText::train(const Args& args) {
-  args_ = std::make_shared<Args>(args);
-  dict_ = std::make_shared<Dictionary>(args_);
-  if (args_->input == "-") {
-    // manage expectations
-    throw std::invalid_argument("Cannot use stdin for training!");
-  }
-  std::ifstream ifs(args_->input);
-  if (!ifs.is_open()) {
-    throw std::invalid_argument(
-        args_->input + " cannot be opened for training!");
-  }
-  dict_->readFromFile(ifs);
-  ifs.close();
-
-  if (!args_->pretrainedVectors.empty()) {
-    input_ = getInputMatrixFromFile(args_->pretrainedVectors);
+  if (!args.pretrainedModel.empty()) {
+    loadModel(args.pretrainedModel + ".bin");
+    args_ = std::make_shared<Args>(args);
   } else {
-    input_ = createRandomMatrix();
+    args_ = std::make_shared<Args>(args);
+    dict_ = std::make_shared<Dictionary>(args_);
+    if (args_->input == "-") {
+      // manage expectations
+      throw std::invalid_argument("Cannot use stdin for training!");
+    }
+    std::ifstream ifs(args_->input);
+    if (!ifs.is_open()) {
+      throw std::invalid_argument(
+          args_->input + " cannot be opened for training!");
+    }
+    dict_->readFromFile(ifs);
+    ifs.close();
+
+    if (!args_->pretrainedVectors.empty()) {
+      input_ = getInputMatrixFromFile(args_->pretrainedVectors);
+    } else {
+      input_ = createRandomMatrix();
+    }
+    output_ = createTrainOutputMatrix();
+    auto loss = createLoss(output_);
+    bool normalizeGradient = (args_->model == model_name::sup);
+    model_ = std::make_shared<Model>(input_, output_, loss, normalizeGradient);
   }
-  output_ = createTrainOutputMatrix();
-  auto loss = createLoss(output_);
-  bool normalizeGradient = (args_->model == model_name::sup);
-  model_ = std::make_shared<Model>(input_, output_, loss, normalizeGradient);
   startThreads();
 }
 
@@ -793,15 +818,14 @@ void FastText::startThreads() {
   while (tokenCount_ < args_->epoch * ntokens) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (loss_ >= 0 && args_->verbose > 1) {
-      real progress = real(tokenCount_) / (args_->epoch * ntokens);
-      printInfo(progress, loss_, std::cerr);
+      printInfo(loss_, std::cerr);
     }
   }
   for (int32_t i = 0; i < args_->thread; i++) {
     threads[i].join();
   }
   if (args_->verbose > 0) {
-    printInfo(1.0, loss_, std::cerr);
+    printInfo(loss_, std::cerr);
     std::cerr << std::endl;
   }
 }

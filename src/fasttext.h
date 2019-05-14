@@ -48,6 +48,8 @@ class FastText {
   bool checkModel(std::istream&);
   void startThreads();
   void addInputVector(Vector&, int32_t, std::minstd_rand&, bool=true) const;
+  real local_progress() const;
+  real global_progress() const;
   void trainThread(int32_t);
   std::vector<std::pair<real, std::string>> getNN(
       const DenseMatrix& wordVectors,
@@ -56,7 +58,7 @@ class FastText {
       const std::set<std::string>& banSet,
       std::minstd_rand&);
   void lazyComputeWordVectors(std::minstd_rand& rng);
-  void printInfo(real, real, std::ostream&);
+  void printInfo(real, std::ostream&);
   std::shared_ptr<Matrix> getInputMatrixFromFile(const std::string&) const;
   std::shared_ptr<Matrix> createRandomMatrix() const;
   std::shared_ptr<Matrix> createTrainOutputMatrix() const;

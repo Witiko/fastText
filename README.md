@@ -258,12 +258,15 @@ The following arguments for training are optional:
   -lrUpdateRate       change the rate of updates for the learning rate [100]
   -dim                size of word vectors [100]
   -ws                 size of the context window [5]
-  -epoch              number of epochs [5]
+  -epoch              number of epochs to train in this step [5]
+  -epochSkip          number of epochs already trained in previous steps [0]
+  -epochTotal         total number of epochs in stepwise training [epochSkip + epoch = 5]
   -neg                number of negatives sampled [5]
   -loss               loss function {ns, hs, softmax} [softmax]
   -binarization       binarization {none, sbc, dbc} [none]
   -thread             number of threads [12]
   -pretrainedVectors  pretrained word vectors for supervised learning []
+  -pretrainedModel    pretrained model for stepwise training []
   -saveOutput         whether output params should be saved [0]
 
 The following arguments for quantization are optional:
