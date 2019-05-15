@@ -35,9 +35,9 @@ class Args {
   int lrUpdateRate;
   int dim;
   int ws;
-  int epoch;
-  int epochSkip;
-  int epochTotal;
+  double epoch;
+  double epochSkip;
+  double epochTotal;
   int minCount;
   int minCountLabel;
   int neg;
@@ -72,6 +72,6 @@ class Args {
   void load(std::istream&);
   void dump(std::ostream&) const;
 
-  static const int32_t implicit = -1;
+  static constexpr const double implicit = -1.0;
 };
 } // namespace fasttext

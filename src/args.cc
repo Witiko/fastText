@@ -20,8 +20,8 @@ Args::Args() {
   lr = 0.05;
   dim = 100;
   ws = 5;
-  epoch = 5;
-  epochSkip = 0;
+  epoch = 5.0;
+  epochSkip = 0.0;
   epochTotal = Args::implicit;
   minCount = 5;
   minCountLabel = 0;
@@ -133,11 +133,11 @@ void Args::parseArgs(const std::vector<std::string>& args) {
       } else if (args[ai] == "-ws") {
         ws = std::stoi(args.at(ai + 1));
       } else if (args[ai] == "-epoch") {
-        epoch = std::stoi(args.at(ai + 1));
+        epoch = std::stof(args.at(ai + 1));
       } else if (args[ai] == "-epochSkip") {
-        epochSkip = std::stoi(args.at(ai + 1));
+        epochSkip = std::stof(args.at(ai + 1));
       } else if (args[ai] == "-epochTotal") {
-        epochTotal = std::stoi(args.at(ai + 1));
+        epochTotal = std::stof(args.at(ai + 1));
       } else if (args[ai] == "-minCount") {
         minCount = std::stoi(args.at(ai + 1));
       } else if (args[ai] == "-minCountLabel") {
@@ -229,6 +229,29 @@ void Args::parseArgs(const std::vector<std::string>& args) {
   if (epochTotal == Args::implicit) {
     epochTotal = epochSkip + epoch;
   }
+  if (epochSkip + epoch > epochTotal) {
+    if (epochSkip > epochTotal) {
+      std::cerr << "epochSkip ("
+                << (epochSkip) << ") > "
+                << "epochTotal ("
+                << (epochTotal) << ")!"
+                << std::endl;
+      exit(EXIT_FAILURE);
+    } else {
+      std::cerr << "epochSkip + epoch ("
+                << (epochSkip + epoch) << ") > "
+                << "epochTotal ("
+                << (epochTotal) << ")!"
+                << std::endl
+                << "Adjusting epoch from "
+                << epoch
+                << " to "
+                << (epochTotal - epochSkip)
+                << "."
+                << std::endl;
+      epoch = epochTotal - epochSkip;
+    }
+  }
 }
 
 void Args::printHelp() {
@@ -310,9 +333,9 @@ void Args::printQuantizationHelp() {
 void Args::save(std::ostream& out) {
   out.write((char*)&(dim), sizeof(int));
   out.write((char*)&(ws), sizeof(int));
-  out.write((char*)&(epoch), sizeof(int));
-  out.write((char*)&(epochSkip), sizeof(int));
-  out.write((char*)&(epochTotal), sizeof(int));
+  out.write((char*)&(epoch), sizeof(double));
+  out.write((char*)&(epochSkip), sizeof(double));
+  out.write((char*)&(epochTotal), sizeof(double));
   out.write((char*)&(minCount), sizeof(int));
   out.write((char*)&(neg), sizeof(int));
   out.write((char*)&(wordNgrams), sizeof(int));
@@ -330,9 +353,9 @@ void Args::save(std::ostream& out) {
 void Args::load(std::istream& in) {
   in.read((char*)&(dim), sizeof(int));
   in.read((char*)&(ws), sizeof(int));
-  in.read((char*)&(epoch), sizeof(int));
-  in.read((char*)&(epochSkip), sizeof(int));
-  in.read((char*)&(epochTotal), sizeof(int));
+  in.read((char*)&(epoch), sizeof(double));
+  in.read((char*)&(epochSkip), sizeof(double));
+  in.read((char*)&(epochTotal), sizeof(double));
   in.read((char*)&(minCount), sizeof(int));
   in.read((char*)&(neg), sizeof(int));
   in.read((char*)&(wordNgrams), sizeof(int));

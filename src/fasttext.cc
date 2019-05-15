@@ -11,6 +11,7 @@
 #include "quantmatrix.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 #include <iostream>
 #include <numeric>
@@ -682,6 +683,16 @@ void FastText::trainThread(int32_t threadId) {
   const int64_t ntokens = dict_->ntokens();
   int64_t localTokenCount = 0;
   std::vector<int32_t> line, labels;
+  while (localTokenCount < std::fmod(args_->epochSkip, 1.0) * ntokens) {
+    if (args_->model == model_name::sup) {
+      localTokenCount += dict_->getLine(ifs, line, labels);
+    } else if (args_->model == model_name::cbow) {
+      localTokenCount += dict_->getLine(ifs, line, state.rng);
+    } else if (args_->model == model_name::sg) {
+      localTokenCount += dict_->getLine(ifs, line, state.rng);
+    }
+  }
+  localTokenCount = 0;
   while (tokenCount_ < args_->epoch * ntokens) {
     real lr = args_->lr * (1.0 - global_progress());
     if (args_->model == model_name::sup) {
