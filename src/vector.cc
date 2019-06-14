@@ -52,18 +52,18 @@ void Vector::addVector(const Vector& source, real s) {
   }
 }
 
-void Vector::addRow(const Matrix& A, int64_t i, real a, std::minstd_rand& rng, bool binarize) {
+void Vector::addRow(const Matrix& A, int64_t i, real a, std::minstd_rand& rng, bool binarizeRow, bool binarizeVector, real vectorNorm) {
   assert(i >= 0);
   assert(i < A.size(0));
   assert(size() == A.size(1));
-  A.addRowToVector(*this, i, a, rng, binarize);
+  A.addRowToVector(*this, i, a, rng, binarizeRow, binarizeVector, vectorNorm);
 }
 
-void Vector::addRow(const Matrix& A, int64_t i, std::minstd_rand& rng, bool binarize) {
+void Vector::addRow(const Matrix& A, int64_t i, std::minstd_rand& rng, bool binarizeRow, bool binarizeVector, real vectorNorm) {
   assert(i >= 0);
   assert(i < A.size(0));
   assert(size() == A.size(1));
-  A.addRowToVector(*this, i, rng, binarize);
+  A.addRowToVector(*this, i, rng, binarizeRow, binarizeVector, vectorNorm);
 }
 
 void Vector::mul(const Matrix& A, const Vector& vec, std::minstd_rand& rng) {

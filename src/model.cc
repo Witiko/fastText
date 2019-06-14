@@ -37,17 +37,22 @@ Model::Model(
     std::shared_ptr<Matrix> wi,
     std::shared_ptr<Matrix> wo,
     std::shared_ptr<Loss> loss,
-    bool normalizeGradient)
-    : wi_(wi), wo_(wo), loss_(loss), normalizeGradient_(normalizeGradient) {}
+    bool normalizeGradient,
+    bool binarizeHidden)
+    : wi_(wi),
+      wo_(wo),
+      loss_(loss),
+      normalizeGradient_(normalizeGradient),
+      binarizeHidden_(binarizeHidden) {}
 
 void Model::computeHidden(const std::vector<int32_t>& input, State& state)
     const {
   Vector& hidden = state.hidden;
   hidden.zero();
-  for (auto it = input.cbegin(); it != input.cend(); ++it) {
-    hidden.addRow(*wi_, *it, state.rng);
+  for (auto it = input.cbegin(); std::next(it) != input.cend(); ++it) {
+    hidden.addRow(*wi_, *it, state.rng, true);
   }
-  hidden.mul(1.0 / input.size());
+  hidden.addRow(*wi_, input.back(), state.rng, true, binarizeHidden_, 1.0 / input.size());
 }
 
 void Model::predict(

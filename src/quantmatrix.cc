@@ -72,7 +72,7 @@ void QuantMatrix::addRowToRow(int64_t, int64_t, real) {
   throw std::runtime_error("Operation not permitted on quantized matrices.");
 }
 
-void QuantMatrix::addRowToVector(Vector& x, int32_t i, real a, std::minstd_rand&, bool) const {
+void QuantMatrix::addRowToVector(Vector& x, int32_t i, real a, std::minstd_rand&, bool, bool, real) const {
   real norm = 1;
   if (qnorm_) {
     norm = npq_->get_centroids(0, norm_codes_[i])[0];
@@ -80,7 +80,7 @@ void QuantMatrix::addRowToVector(Vector& x, int32_t i, real a, std::minstd_rand&
   pq_->addcode(x, codes_.data(), i, a * norm);
 }
 
-void QuantMatrix::addRowToVector(Vector& x, int32_t i, std::minstd_rand&, bool) const {
+void QuantMatrix::addRowToVector(Vector& x, int32_t i, std::minstd_rand&, bool, bool, real) const {
   real norm = 1;
   if (qnorm_) {
     norm = npq_->get_centroids(0, norm_codes_[i])[0];

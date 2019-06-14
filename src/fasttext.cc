@@ -271,7 +271,7 @@ void FastText::loadModel(std::istream& in) {
 
   auto loss = createLoss(output_);
   bool normalizeGradient = (args_->model == model_name::sup);
-  model_ = std::make_shared<Model>(input_, output_, loss, normalizeGradient);
+  model_ = std::make_shared<Model>(input_, output_, loss, normalizeGradient, args_->binarizeHidden);
 }
 
 void FastText::printInfo(real loss, std::ostream& log_stream) {
@@ -350,7 +350,7 @@ void FastText::quantize(const Args& qargs) {
       args_->thread = qargs.thread;
       args_->verbose = qargs.verbose;
       auto loss = createLoss(output_);
-      model_ = std::make_shared<Model>(input, output, loss, normalizeGradient);
+      model_ = std::make_shared<Model>(input, output, loss, normalizeGradient, args_->binarizeHidden);
       startThreads();
     }
   }
@@ -365,7 +365,7 @@ void FastText::quantize(const Args& qargs) {
 
   quant_ = true;
   auto loss = createLoss(output_);
-  model_ = std::make_shared<Model>(input_, output_, loss, normalizeGradient);
+  model_ = std::make_shared<Model>(input_, output_, loss, normalizeGradient, args_->binarizeHidden);
 }
 
 void FastText::supervised(
@@ -811,7 +811,7 @@ void FastText::train(const Args& args) {
     output_ = createTrainOutputMatrix();
     auto loss = createLoss(output_);
     bool normalizeGradient = (args_->model == model_name::sup);
-    model_ = std::make_shared<Model>(input_, output_, loss, normalizeGradient);
+    model_ = std::make_shared<Model>(input_, output_, loss, normalizeGradient, args_->binarizeHidden);
   }
   startThreads();
 }

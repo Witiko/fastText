@@ -30,6 +30,7 @@ Args::Args() {
   loss = loss_name::ns;
   model = model_name::sg;
   binarization = binarization_name::none;
+  binarizeHidden = false;
   bucket = 2000000;
   minn = 3;
   maxn = 6;
@@ -173,6 +174,9 @@ void Args::parseArgs(const std::vector<std::string>& args) {
           printHelp();
           exit(EXIT_FAILURE);
         }
+      } else if (args[ai] == "-binarizeHidden") {
+        binarizeHidden = true;
+        ai--;
       } else if (args[ai] == "-bucket") {
         bucket = std::stoi(args.at(ai + 1));
       } else if (args[ai] == "-minn") {
@@ -307,6 +311,8 @@ void Args::printTrainingHelp() {
       << lossToString(loss) << "]\n"
       << "  -binarization       binarization {none, sbc, dbc} ["
       << binarizationToString(binarization) << "]\n"
+      << "  -binarizeHidden     binarize the activations of the hidden layer ["
+      << boolToString(binarizeHidden) << "]\n"
       << "  -thread             number of threads [" << thread << "]\n"
       << "  -pretrainedVectors  pretrained word vectors for supervised learning ["
       << pretrainedVectors << "]\n"
@@ -342,6 +348,7 @@ void Args::save(std::ostream& out) {
   out.write((char*)&(loss), sizeof(loss_name));
   out.write((char*)&(model), sizeof(model_name));
   out.write((char*)&(binarization), sizeof(binarization_name));
+  out.write((char*)&(binarizeHidden), sizeof(bool));
   out.write((char*)&(bucket), sizeof(int));
   out.write((char*)&(minn), sizeof(int));
   out.write((char*)&(maxn), sizeof(int));
@@ -362,6 +369,7 @@ void Args::load(std::istream& in) {
   in.read((char*)&(loss), sizeof(loss_name));
   in.read((char*)&(model), sizeof(model_name));
   in.read((char*)&(binarization), sizeof(binarization_name));
+  in.read((char*)&(binarizeHidden), sizeof(bool));
   in.read((char*)&(bucket), sizeof(int));
   in.read((char*)&(minn), sizeof(int));
   in.read((char*)&(maxn), sizeof(int));
@@ -393,6 +401,8 @@ void Args::dump(std::ostream& out) const {
       << " " << modelToString(model) << std::endl;
   out << "binarization"
       << " " << binarizationToString(binarization) << std::endl;
+  out << "binarizeHidden"
+      << " " << boolToString(binarizeHidden) << std::endl;
   out << "bucket"
       << " " << bucket << std::endl;
   out << "minn"

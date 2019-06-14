@@ -53,8 +53,8 @@ class QuantMatrix : public Matrix {
   real dotRow(int64_t, int64_t) const override;
   void addVectorToRow(const Vector&, int64_t, real) override;
   void addRowToRow(int64_t, int64_t, real) override;
-  void addRowToVector(Vector& x, int32_t i, std::minstd_rand&, bool=true) const override;
-  void addRowToVector(Vector& x, int32_t i, real a, std::minstd_rand&, bool=true) const override;
+  void addRowToVector(Vector& x, int32_t i, std::minstd_rand&, bool=true, bool=false, real=1.0) const override;
+  void addRowToVector(Vector& x, int32_t i, real a, std::minstd_rand&, bool=true, bool=false, real=1.0) const override;
   void save(std::ostream&) const override;
   void load(std::istream&) override;
   void dump(std::ostream&) const override;

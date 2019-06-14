@@ -94,12 +94,12 @@ real DenseMatrix::dotRow(
     const Vector& vec,
     int64_t i,
     std::minstd_rand& rng,
-    bool binarize) const {
+    bool binarizeRow) const {
   assert(i >= 0);
   assert(i < m_);
   assert(vec.size() == n_);
   real d = 0.0;
-  if (!binarize) {
+  if (!binarizeRow) {
     for (int64_t j = 0; j < n_; j++) {
       d += at(i, j) * vec[j];
     }
@@ -171,24 +171,29 @@ void DenseMatrix::addRowToVector(
     Vector& x,
     int32_t i,
     std::minstd_rand& rng,
-    bool binarize) const {
+    bool binarizeRow,
+    bool binarizeVector,
+    real vectorNorm) const {
   assert(i >= 0);
   assert(i < this->size(0));
   assert(x.size() == this->size(1));
-  if (!binarize) {
+  if (!binarizeRow) {
     for (int64_t j = 0; j < this->size(1); j++) {
       x[j] += at(i, j);
+      x[j] *= vectorNorm;
     }
   } else {
     switch (bn_) {
       case binarization_name::none:
         for (int64_t j = 0; j < this->size(1); j++) {
           x[j] += at(i, j);
+          x[j] *= vectorNorm;
         }
         break;
       case binarization_name::dbc:
         for (int64_t j = 0; j < this->size(1); j++) {
           x[j] += utils::binarize(at(i, j));
+          x[j] *= vectorNorm;
         }
         break;
       case binarization_name::sbc:
@@ -197,6 +202,26 @@ void DenseMatrix::addRowToVector(
         for (int64_t j = 0; j < this->size(1); j++) {
           p = utils::sigmoid(at(i, j));
           x[j] += utils::binarize(uniform(rng) < p);
+          x[j] *= vectorNorm;
+        }
+        break;
+    }
+  }
+  if (binarizeVector) {
+    switch (bn_) {
+      case binarization_name::none:
+        break;
+      case binarization_name::dbc:
+        for (int64_t j = 0; j < this->size(1); j++) {
+          x[j] = utils::binarize(x[j]);
+        }
+        break;
+      case binarization_name::sbc:
+        std::uniform_real_distribution<> uniform(0.0, 1.0);
+        real p;
+        for (int64_t j = 0; j < this->size(1); j++) {
+          p = utils::sigmoid(x[j]);
+          x[j] = utils::binarize(uniform(rng) < p);
         }
         break;
     }
@@ -208,24 +233,29 @@ void DenseMatrix::addRowToVector(
     int32_t i,
     real a,
     std::minstd_rand& rng,
-    bool binarize) const {
+    bool binarizeRow,
+    bool binarizeVector,
+    real vectorNorm) const {
   assert(i >= 0);
   assert(i < this->size(0));
   assert(x.size() == this->size(1));
-  if (!binarize) {
+  if (!binarizeRow) {
     for (int64_t j = 0; j < this->size(1); j++) {
       x[j] += a * at(i, j);
+      x[j] *= vectorNorm;
     }
   } else {
     switch (bn_) {
       case binarization_name::none:
         for (int64_t j = 0; j < this->size(1); j++) {
           x[j] += a * at(i, j);
+          x[j] *= vectorNorm;
         }
         break;
       case binarization_name::dbc:
         for (int64_t j = 0; j < this->size(1); j++) {
           x[j] += a * utils::binarize(at(i, j));
+          x[j] *= vectorNorm;
         }
         break;
       case binarization_name::sbc:
@@ -234,6 +264,26 @@ void DenseMatrix::addRowToVector(
         for (int64_t j = 0; j < this->size(1); j++) {
           p = utils::sigmoid(at(i, j));
           x[j] += a * utils::binarize(uniform(rng) < p);
+          x[j] *= vectorNorm;
+        }
+        break;
+    }
+  }
+  if (binarizeVector) {
+    switch (bn_) {
+      case binarization_name::none:
+        break;
+      case binarization_name::dbc:
+        for (int64_t j = 0; j < this->size(1); j++) {
+          x[j] = utils::binarize(x[j]);
+        }
+        break;
+      case binarization_name::sbc:
+        std::uniform_real_distribution<> uniform(0.0, 1.0);
+        real p;
+        for (int64_t j = 0; j < this->size(1); j++) {
+          p = utils::sigmoid(x[j]);
+          x[j] = utils::binarize(uniform(rng) < p);
         }
         break;
     }

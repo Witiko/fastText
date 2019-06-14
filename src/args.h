@@ -45,6 +45,7 @@ class Args {
   loss_name loss;
   model_name model;
   binarization_name binarization;
+  bool binarizeHidden;
   int bucket;
   int minn;
   int maxn;

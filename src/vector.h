@@ -51,8 +51,8 @@ class Vector {
   real norm() const;
   void addVector(const Vector& source);
   void addVector(const Vector&, real);
-  void addRow(const Matrix&, int64_t, std::minstd_rand&, bool=true);
-  void addRow(const Matrix&, int64_t, real, std::minstd_rand&, bool=true);
+  void addRow(const Matrix&, int64_t, std::minstd_rand&, bool=true, bool=false, real=1.0);
+  void addRow(const Matrix&, int64_t, real, std::minstd_rand&, bool=true, bool=false, real=1.0);
   void mul(const Matrix&, const Vector&, std::minstd_rand&);
   int64_t argmax();
 };
