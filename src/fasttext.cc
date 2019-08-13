@@ -111,6 +111,7 @@ void FastText::getSubwordVector(Vector& vec, const std::string& subword, std::mi
 
 void FastText::saveVectors(const std::string& filename, std::minstd_rand& rng) {
   std::ofstream ofs(filename);
+  ofs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
   if (!ofs.is_open()) {
     throw std::invalid_argument(
         filename + " cannot be opened for saving vectors!");
@@ -131,6 +132,7 @@ void FastText::saveVectors(std::minstd_rand& rng) {
 
 void FastText::saveOutput(const std::string& filename, std::minstd_rand& rng) {
   std::ofstream ofs(filename);
+  ofs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
   if (!ofs.is_open()) {
     throw std::invalid_argument(
         filename + " cannot be opened for saving vectors!");
@@ -192,6 +194,7 @@ void FastText::saveModel(const std::string& filename) {
   std::cerr << std::endl;
 
   std::ofstream ofs(filename, std::ofstream::binary);
+  ofs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
   if (!ofs.is_open()) {
     throw std::invalid_argument(filename + " cannot be opened for saving!");
   }
@@ -216,6 +219,7 @@ void FastText::loadModel(const std::string& filename) {
   std::cerr << std::endl;
 
   std::ifstream ifs(filename, std::ifstream::binary);
+  ifs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
   if (!ifs.is_open()) {
     throw std::invalid_argument(filename + " cannot be opened for loading!");
   }
@@ -720,6 +724,7 @@ void FastText::trainThread(int32_t threadId) {
 std::shared_ptr<Matrix> FastText::getInputMatrixFromFile(
     const std::string& filename) const {
   std::ifstream in(filename);
+  in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
   std::vector<std::string> words;
   std::shared_ptr<DenseMatrix> mat; // temp. matrix for pretrained vectors
   int64_t n, dim;
