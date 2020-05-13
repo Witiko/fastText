@@ -30,7 +30,9 @@ void printUsage() {
       << "  predict-prob            predict most likely labels with "
          "probabilities\n"
       << "  skipgram                train a skipgram model\n"
+      << "  skipgram-frozen         test a skipgram model\n"
       << "  cbow                    train a cbow model\n"
+      << "  cbow-frozen             test a cbow model\n"
       << "  print-word-vectors      print word vectors given a trained model\n"
       << "  print-sentence-vectors  print sentence vectors given a trained "
          "model\n"
@@ -386,6 +388,19 @@ void train(const std::vector<std::string> args) {
   }
 }
 
+void trainFrozen(const std::vector<std::string> args) {
+  Args a = Args();
+  a.parseArgs(args);
+
+  std::string outputFileName;
+  outputFileName = a.output + ".bin";
+
+  FastText fasttext;
+  fasttext.loadModel(outputFileName);
+
+  fasttext.trainFrozen(a);
+}
+
 void dump(const std::vector<std::string>& args) {
   if (args.size() < 4) {
     printDumpUsage();
@@ -428,6 +443,8 @@ int main(int argc, char** argv) {
   std::string command(args[1]);
   if (command == "skipgram" || command == "cbow" || command == "supervised") {
     train(args);
+  } else if (command == "skipgram-frozen" || command == "cbow-frozen") {
+    trainFrozen(args);
   } else if (command == "test" || command == "test-label") {
     test(args);
   } else if (command == "quantize") {

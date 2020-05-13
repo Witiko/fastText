@@ -371,7 +371,8 @@ void FastText::supervised(
     Model::State& state,
     real lr,
     const std::vector<int32_t>& line,
-    const std::vector<int32_t>& labels) {
+    const std::vector<int32_t>& labels,
+    bool frozen) {
   if (labels.size() == 0 || line.size() == 0) {
     return;
   }
@@ -380,14 +381,15 @@ void FastText::supervised(
   } else {
     std::uniform_int_distribution<> uniform(0, labels.size() - 1);
     int32_t i = uniform(state.rng);
-    model_->update(line, labels, i, lr, state);
+    model_->update(line, labels, i, lr, state, frozen);
   }
 }
 
 void FastText::cbow(
     Model::State& state,
     real lr,
-    const std::vector<int32_t>& line) {
+    const std::vector<int32_t>& line,
+    bool frozen) {
   std::vector<int32_t> bow;
   std::uniform_int_distribution<> uniform(1, args_->ws);
   for (int32_t w = 0; w < line.size(); w++) {
@@ -399,21 +401,22 @@ void FastText::cbow(
         bow.insert(bow.end(), ngrams.cbegin(), ngrams.cend());
       }
     }
-    model_->update(bow, line, w, lr, state);
+    model_->update(bow, line, w, lr, state, frozen);
   }
 }
 
 void FastText::skipgram(
     Model::State& state,
     real lr,
-    const std::vector<int32_t>& line) {
+    const std::vector<int32_t>& line,
+    bool frozen) {
   std::uniform_int_distribution<> uniform(1, args_->ws);
   for (int32_t w = 0; w < line.size(); w++) {
     int32_t boundary = uniform(state.rng);
     const std::vector<int32_t>& ngrams = dict_->getSubwords(line[w]);
     for (int32_t c = -boundary; c <= boundary; c++) {
       if (c != 0 && w + c >= 0 && w + c < line.size()) {
-        model_->update(ngrams, line, w + c, lr, state);
+        model_->update(ngrams, line, w + c, lr, state, frozen);
       }
     }
   }
@@ -629,13 +632,12 @@ bool FastText::keepTraining(const int64_t ntokens) const {
   return tokenCount_ < args_->epoch * ntokens && !trainException_;
 }
 
-void FastText::trainThread(int32_t threadId, const TrainCallback& callback) {
+void FastText::trainThread(int32_t threadId, const TrainCallback& callback, const int64_t ntokens, bool frozen) {
   std::ifstream ifs(args_->input);
   utils::seek(ifs, threadId * utils::size(ifs) / args_->thread);
 
   Model::State state(args_->dim, output_->size(0), threadId + args_->seed);
 
-  const int64_t ntokens = dict_->ntokens();
   int64_t localTokenCount = 0;
   std::vector<int32_t> line, labels;
   uint64_t callbackCounter = 0;
@@ -653,13 +655,13 @@ void FastText::trainThread(int32_t threadId, const TrainCallback& callback) {
       real lr = args_->lr * (1.0 - progress);
       if (args_->model == model_name::sup) {
         localTokenCount += dict_->getLine(ifs, line, labels);
-        supervised(state, lr, line, labels);
+        supervised(state, lr, line, labels, frozen);
       } else if (args_->model == model_name::cbow) {
         localTokenCount += dict_->getLine(ifs, line, state.rng);
-        cbow(state, lr, line);
+        cbow(state, lr, line, frozen);
       } else if (args_->model == model_name::sg) {
         localTokenCount += dict_->getLine(ifs, line, state.rng);
-        skipgram(state, lr, line);
+        skipgram(state, lr, line, frozen);
       }
       if (localTokenCount > args_->lrUpdateRate) {
         tokenCount_ += localTokenCount;
@@ -768,6 +770,31 @@ void FastText::train(const Args& args, const TrainCallback& callback) {
   startThreads(callback);
 }
 
+void FastText::trainFrozen(const Args& args) {
+  args_->input = args.input;
+  args_->loss = args.loss;
+  args_->neg = args.neg;
+  args_->thread = args.thread;
+  args_->epoch = 1;
+  Dictionary dict(args_);
+  if (args_->input == "-") {
+    // manage expectations
+    throw std::invalid_argument("Cannot use stdin for testing!");
+  }
+  std::ifstream ifs(args_->input);
+  if (!ifs.is_open()) {
+    throw std::invalid_argument(
+        args_->input + " cannot be opened for training!");
+  }
+  dict.readFromFile(ifs);
+  ifs.close();
+  const int64_t ntokens = dict.ntokens();
+  auto loss = createLoss(output_);
+  bool normalizeGradient = (args_->model == model_name::sup);
+  model_ = std::make_shared<Model>(input_, output_, loss, normalizeGradient);
+  startFrozenThreads(ntokens);
+}
+
 void FastText::abort() {
   try {
     throw AbortError();
@@ -781,16 +808,54 @@ void FastText::startThreads(const TrainCallback& callback) {
   tokenCount_ = 0;
   loss_ = -1;
   trainException_ = nullptr;
+  const int64_t ntokens = dict_->ntokens();
   std::vector<std::thread> threads;
   if (args_->thread > 1) {
     for (int32_t i = 0; i < args_->thread; i++) {
-      threads.push_back(std::thread([=]() { trainThread(i, callback); }));
+      threads.push_back(std::thread([=]() { trainThread(i, callback, ntokens); }));
     }
   } else {
     // webassembly can't instantiate `std::thread`
-    trainThread(0, callback);
+    trainThread(0, callback, ntokens);
   }
-  const int64_t ntokens = dict_->ntokens();
+  // Same condition as trainThread
+  while (keepTraining(ntokens)) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (loss_ >= 0 && args_->verbose > 1) {
+      real progress = real(tokenCount_) / (args_->epoch * ntokens);
+      std::cerr << "\r";
+      printInfo(progress, loss_, std::cerr);
+    }
+  }
+  for (int32_t i = 0; i < threads.size(); i++) {
+    threads[i].join();
+  }
+  if (trainException_) {
+    std::exception_ptr exception = trainException_;
+    trainException_ = nullptr;
+    std::rethrow_exception(exception);
+  }
+  if (args_->verbose > 0) {
+    std::cerr << "\r";
+    printInfo(1.0, loss_, std::cerr);
+    std::cerr << std::endl;
+  }
+}
+
+void FastText::startFrozenThreads(const int64_t ntokens) {
+  start_ = std::chrono::steady_clock::now();
+  tokenCount_ = 0;
+  loss_ = -1;
+  trainException_ = nullptr;
+  std::vector<std::thread> threads;
+  if (args_->thread > 1) {
+    for (int32_t i = 0; i < args_->thread; i++) {
+      threads.push_back(std::thread([=]() { trainThread(i, {}, ntokens, true); }));
+    }
+  } else {
+    // webassembly can't instantiate `std::thread`
+    trainThread(0, {}, ntokens, true);
+  }
   // Same condition as trainThread
   while (keepTraining(ntokens)) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));

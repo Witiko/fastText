@@ -114,7 +114,7 @@ void Args::parseArgs(const std::vector<std::string>& args) {
     minn = 0;
     maxn = 0;
     lr = 0.1;
-  } else if (command == "cbow") {
+  } else if (command == "cbow" or command == "cbow-frozen") {
     model = model_name::cbow;
   }
   for (int ai = 2; ai < args.size(); ai += 2) {

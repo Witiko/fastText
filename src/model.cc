@@ -71,7 +71,8 @@ void Model::update(
     const std::vector<int32_t>& targets,
     int32_t targetIndex,
     real lr,
-    State& state) {
+    State& state,
+    bool frozen) {
   if (input.size() == 0) {
     return;
   }
@@ -82,11 +83,13 @@ void Model::update(
   real lossValue = loss_->forward(targets, targetIndex, state, lr, true);
   state.incrementNExamples(lossValue);
 
-  if (normalizeGradient_) {
-    grad.mul(1.0 / input.size());
-  }
-  for (auto it = input.cbegin(); it != input.cend(); ++it) {
-    wi_->addVectorToRow(grad, *it, 1.0);
+  if (!frozen) {
+    if (normalizeGradient_) {
+      grad.mul(1.0 / input.size());
+    }
+    for (auto it = input.cbegin(); it != input.cend(); ++it) {
+      wi_->addVectorToRow(grad, *it, 1.0);
+    }
   }
 }
 

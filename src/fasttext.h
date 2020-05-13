@@ -53,8 +53,9 @@ class FastText {
   void signModel(std::ostream&);
   bool checkModel(std::istream&);
   void startThreads(const TrainCallback& callback = {});
+  void startFrozenThreads(const int64_t ntokens);
   void addInputVector(Vector&, int32_t) const;
-  void trainThread(int32_t, const TrainCallback& callback);
+  void trainThread(int32_t, const TrainCallback& callback, const int64_t ntokens, bool frozen=false);
   std::vector<std::pair<real, std::string>> getNN(
       const DenseMatrix& wordVectors,
       const Vector& queryVec,
@@ -71,9 +72,10 @@ class FastText {
       Model::State& state,
       real lr,
       const std::vector<int32_t>& line,
-      const std::vector<int32_t>& labels);
-  void cbow(Model::State& state, real lr, const std::vector<int32_t>& line);
-  void skipgram(Model::State& state, real lr, const std::vector<int32_t>& line);
+      const std::vector<int32_t>& labels,
+      bool frozen=false);
+  void cbow(Model::State& state, real lr, const std::vector<int32_t>& line, bool frozen=false);
+  void skipgram(Model::State& state, real lr, const std::vector<int32_t>& line, bool frozen=false);
   std::vector<int32_t> selectEmbeddings(int32_t cutoff) const;
   void precomputeWordVectors(DenseMatrix& wordVectors);
   bool keepTraining(const int64_t ntokens) const;
@@ -155,6 +157,8 @@ class FastText {
       const std::string& wordC);
 
   void train(const Args& args, const TrainCallback& callback = {});
+
+  void trainFrozen(const Args& args);
 
   void abort();
 
